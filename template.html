@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SC House Flip Watch 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F8FAFC;--card:#fff;--line:#E2E8F0;--muted:#64748B;--text:#1E293B;--head:#0F172A;--soft:#F1F5F9;
+  --dem:#1E40AF;--dem-lean:#3B82F6;--dem-tint:#DBEAFE;
+  --rep:#991B1B;--rep-lean:#DC2626;--rep-tint:#FEE2E2;
+  --flip:#059669;--flip-tint:#D1FAE5;--toss:#B45309;--toss-tint:#FEF3C7;--brand:#6366F1;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 'Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+h1,h2,h3{font-family:'DM Sans',-apple-system,sans-serif;color:var(--head);margin:0}
+.wrap{max-width:1360px;margin:0 auto;padding:20px 20px 60px}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+header h1{font-size:26px;letter-spacing:-.01em}
+header p{margin:4px 0 0;color:var(--muted)}
+.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:#94A3B8;display:inline-block}
+.dot.live{background:var(--flip);box-shadow:0 0 0 0 rgba(5,150,105,.6);animation:pulse 2s infinite}
+.dot.err{background:var(--rep-lean)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(5,150,105,.5)}70%{box-shadow:0 0 0 8px rgba(5,150,105,0)}100%{box-shadow:0 0 0 0 rgba(5,150,105,0)}}
+button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--text)}
+button:hover{border-color:var(--brand);color:var(--brand)}
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile .n{font:700 28px/1 'DM Sans',sans-serif}
+.tile .l{color:var(--muted);font-size:12px;margin-top:4px}
+.tile.flip .n{color:var(--flip)}.tile.dlead .n{color:var(--dem)}.tile.rlead .n{color:var(--rep)}.tile.toss .n{color:var(--toss)}
+.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:1fr}}
+.mapcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;position:sticky;top:12px}
+.mapcard svg{width:100%;height:auto;display:block}
+.mapcard path{fill:#EEF2F6;stroke:#fff;stroke-width:.4;transition:fill .3s}
+.mapcard path.t{stroke:#0F172A;stroke-width:1.1;cursor:pointer}
+.mapcard path.t:hover,.mapcard path.t.sel{stroke-width:2.2}
+.maplabel{font:700 9px 'DM Sans',sans-serif;fill:#0F172A;paint-order:stroke;stroke:#fff;stroke-width:2.5px;pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.cards{display:grid;gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-left:5px solid #CBD5E1;border-radius:12px;padding:12px 14px;scroll-margin-top:12px}
+.card.sel{outline:2px solid var(--brand)}
+.card.s-flip{border-left-color:var(--flip);background:linear-gradient(90deg,var(--flip-tint),#fff 40%)}
+.card.s-dlead{border-left-color:var(--dem-lean)}
+.card.s-rlead{border-left-color:var(--rep-lean)}
+.card.s-toss{border-left-color:var(--toss)}
+.card.s-hold{border-left-color:var(--rep)}
+.ch{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.ch h3{font-size:18px}
+.ch .meta{color:var(--muted);font-size:12px}
+.badge{font:600 12px 'DM Sans',sans-serif;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.b-flip{background:var(--flip);color:#fff}.b-dlead{background:var(--dem-tint);color:var(--dem)}.b-rlead{background:var(--rep-tint);color:var(--rep)}
+.b-toss{background:var(--toss-tint);color:var(--toss)}.b-hold{background:var(--rep);color:#fff}.b-wait{background:var(--soft);color:var(--muted)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 12px;align-items:center;margin-top:8px;font-size:13px}
+.row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .pc{font:700 15px 'DM Sans',sans-serif;text-align:right;min-width:56px}
+.row .vt{color:var(--muted);text-align:right;min-width:64px;font-variant-numeric:tabular-nums}
+.bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--soft);overflow:hidden;display:flex}
+.bar span{display:block;height:100%}
+.facts{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:12px;color:var(--muted)}
+.facts b{color:var(--text);font-weight:600}
+.prog{height:5px;background:var(--soft);border-radius:3px;margin-top:8px;overflow:hidden}
+.prog span{display:block;height:100%;background:var(--brand)}
+.note{font-size:13px;margin-top:8px;color:var(--text)}
+details{margin-top:8px;font-size:12px;color:var(--muted)}
+details table{border-collapse:collapse;width:100%;margin-top:4px}
+details td,details th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:right}
+details td:first-child,details th:first-child{text-align:left}
+.demo{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-weight:600}
+footer{margin-top:24px;color:var(--muted);font-size:12px}
+footer a{color:var(--brand)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="demo" class="demo" hidden>DEMO MODE: simulated numbers for layout testing, not real results. Remove ?demo from the address to see live results.</div>
+<header>
+  <div>
+    <h1>SC House Flip Watch</h1>
+    <p>14 Republican-held State House seats we are trying to flip · General election, 3 Nov 2026 · Unofficial results</p>
+  </div>
+  <div class="status">
+    <span class="dot" id="dot"></span><span id="stat">Loading…</span>
+    <span id="next"></span>
+    <button id="refresh">Refresh now</button>
+  </div>
+</header>
+
+<div class="tally" id="tally"></div>
+
+<div class="grid">
+  <div class="mapcard">
+    <!--SVG-->
+    <div class="legend">
+      <span><i style="background:var(--flip)"></i>Dem won (flip)</span>
+      <span><i style="background:var(--dem-lean)"></i>Dem leading</span>
+      <span><i style="background:#FBBF24"></i>Within 3 pts</span>
+      <span><i style="background:var(--rep-lean)"></i>Rep leading</span>
+      <span><i style="background:var(--rep)"></i>Rep held</span>
+      <span><i style="background:#CBD5E1"></i>No votes yet</span>
+    </div>
+  </div>
+  <div>
+    <div class="toolbar">Sort:
+      <button data-sort="hd">District</button>
+      <button data-sort="margin">Best for Dem</button>
+      <button data-sort="close">Closest</button>
+      <button data-sort="baseline">Baseline</button>
+    </div>
+    <div class="cards" id="cards"></div>
+  </div>
+</div>
+
+<footer>
+  Source: South Carolina Election Commission official results feed (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>), read directly by this page every 10 minutes. All results are unofficial until certified.
+  "Precincts counted" adds up each county's precincts for the district; SC also reports absentee and early votes as their own precincts, so early votes can arrive in a lump.
+  "Dem needs" assumes the remaining precincts are the same size as those already counted, so treat it as a rough guide.
+  Baseline = average top-of-ticket Dem margin 2020–24 in the district; early-vote lean = modeled party share of early voters through 2 Nov (both from the "Challenge every seat 2026" sheet).
+</footer>
+</div>
+
+<script>
+const ELECTION = 'https://www.enr-scvotes.org/SC/127300';
+const REFRESH_MS = 10 * 60 * 1000;
+// From "Challenge every seat 2026" sheet: base = Av. Top Tkt. Perf. 20-24 (Dem margin), ev = early-vote Dem share through 11/2
+const TARGETS = [
+  {hd:12, key:'28024', region:'Upstate / Greenwood', inc:'Daniel Gibson', base:-0.0148, ev:0.5954},
+  {hd:24, key:'28048', region:'Upstate / Greenville', inc:'Bruce Bannister', base:-0.0796, ev:0.4869},
+  {hd:57, key:'28114', region:'Pee Dee / Marion', inc:'Lucas Atkinson', base:-0.0536, ev:0.7711},
+  {hd:60, key:'28120', region:'Pee Dee / Florence', inc:'Phillip Lowe', base:-0.2819, ev:0.6288},
+  {hd:64, key:'28128', region:'Midlands / Clarendon', inc:'Fawn Pedalino', base:-0.0305, ev:0.7423},
+  {hd:67, key:'28134', region:'Midlands / Sumter', inc:'Murrell Smith', base:-0.1938, ev:0.6214},
+  {hd:89, key:'28178', region:'Midlands / Lexington', inc:'Micah Caskey', base:-0.1036, ev:0.5406},
+  {hd:92, key:'28184', region:'Lowcountry / Berkeley', inc:'Brandon Cox', base:-0.1164, ev:0.5474},
+  {hd:98, key:'28196', region:'Lowcountry / Dorchester', inc:'Greg Ford', base:-0.0620, ev:0.5397},
+  {hd:102, key:'28204', region:'Lowcountry / Berkeley', inc:'Harriet Holman', base:0.0082, ev:0.6572},
+  {hd:110, key:'28220', region:'Lowcountry / Charleston', inc:'Tom Hartnett', base:0.0084, ev:0.4753},
+  {hd:112, key:'28224', region:'Lowcountry / Charleston', inc:'Joe Bustos', base:-0.0848, ev:0.4584},
+  {hd:116, key:'28232', region:'Lowcountry / Charleston', inc:'James Teeple', base:0.0364, ev:0.5490},
+  {hd:122, key:'28244', region:'Lowcountry / Hampton', inc:'Bill Hager', base:-0.0090, ev:0.7229},
+];
+const STATUS = {
+  flip:{label:'FLIPPED: Dem wins', color:'#059669'},
+  dlead:{label:'Dem leading', color:'#3B82F6'},
+  toss:{label:'Too close to call', color:'#FBBF24'},
+  rlead:{label:'Rep leading', color:'#DC2626'},
+  hold:{label:'Rep holds', color:'#991B1B'},
+  wait:{label:'No votes yet', color:'#CBD5E1'},
+};
+const DEMO = new URLSearchParams(location.search).has('demo');
+let sortBy = 'hd', selected = null, lastRaces = null, nextAt = 0, version = null;
+
+const fmt = n => n.toLocaleString('en-US');
+const pct = (x, d=1) => (x*100).toFixed(d) + '%';
+const pts = x => (x>=0?'D+':'R+') + Math.abs(x*100).toFixed(1);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cleanName = s => s.replace(/^(REP|DEM|NON|UNC|GRN|LIB|CON|AMR|WFM|IND)\s+/, '');
+
+async function getJSON(url) {
+  const r = await fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(), {cache:'no-store'});
+  if (!r.ok) throw new Error(r.status + ' on ' + url.split('/').slice(-2).join('/'));
+  return r.json();
+}
+
+async function load() {
+  setStat('Checking for new results…', '');
+  try {
+    let summary, details;
+    if (DEMO) { ({summary, details} = demoData()); version = 'demo'; }
+    else {
+      const vr = await fetch(ELECTION + '/current_ver.txt?_=' + Date.now(), {cache:'no-store'});
+      if (!vr.ok) throw new Error(vr.status + ' on current_ver.txt');
+      version = (await vr.text()).trim();
+      [summary, details] = await Promise.all([
+        getJSON(`${ELECTION}/${version}/json/en/summary.json`),
+        getJSON(`${ELECTION}/${version}/json/details.json`),
+      ]);
+    }
+    lastRaces = build(summary, details.Contests || details);
+    render();
+    setStat(`Updated ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · feed version ${version}`, 'live');
+  } catch (e) {
+    console.error(e);
+    setStat('Could not reach the results feed (' + e.message + '). Will retry.', 'err');
+  }
+  nextAt = Date.now() + REFRESH_MS;
+}
+
+function setStat(t, cls) {
+  document.getElementById('stat').textContent = t;
+  document.getElementById('dot').className = 'dot ' + cls;
+}
+
+function build(summary, details) {
+  const byK = Object.fromEntries(summary.map(c => [c.K, c]));
+  const detK = Object.fromEntries(details.map(c => [c.K, c]));
+  return TARGETS.map(t => {
+    const c = byK[t.key], d = detK[t.key];
+    if (!c) return {...t, missing:true, status:'wait'};
+    const cands = c.CH.map((n, i) => ({name: cleanName(n), party: c.P[i], votes: c.V[i] || 0, won: c.W && c.W[i] === 1}));
+    const dem = cands.find(x => x.party === 'DEM') || {name:'Democrat', votes:0};
+    const rep = cands.find(x => x.party === 'REP') || {name:'Republican', votes:0};
+    const other = cands.filter(x => x !== dem && x !== rep).reduce((s, x) => s + x.votes, 0);
+    const total = dem.votes + rep.votes + other;
+    const pr = d ? d.PX.reduce((a, b) => a + b, 0) : 0;
+    const tp = d ? d.PY.reduce((a, b) => a + b, 0) : 0;
+    const counties = d ? d.P.map((name, i) => ({name, px:d.PX[i], py:d.PY[i], v:d.V[i] || []})) : [];
+    const share = total ? pr / Math.max(tp, 1) : 0;
+    const margin = total ? (dem.votes - rep.votes) / total : 0;
+    const allIn = tp > 0 && pr >= tp;
+    let status;
+    if (dem.won) status = 'flip';
+    else if (rep.won) status = 'hold';
+    else if (!total) status = 'wait';
+    else if (allIn) status = margin > 0 ? 'flip' : 'hold';
+    else if (Math.abs(margin) < 0.03) status = 'toss';
+    else status = margin > 0 ? 'dlead' : 'rlead';
+    // rough projection of remaining votes from precincts counted
+    let needs = null, remaining = 0;
+    if (total && share > 0 && share < 1) {
+      remaining = Math.round(total / share - total);
+      const gap = rep.votes - dem.votes; // positive = Dem behind
+      if (remaining > 0) needs = 0.5 + gap / (2 * remaining); // Dem share of remaining two-way vote needed to tie
+    }
+    return {...t, contest:c.C, cands, dem, rep, other, total, pr, tp, share, margin, allIn, status, needs, remaining, counties,
+      called: dem.won || rep.won, dshare: total ? dem.votes / total : 0};
+  });
+}
+
+function sorted(races) {
+  const r = [...races];
+  const m = x => x.total ? x.margin : -9;
+  if (sortBy === 'margin') r.sort((a, b) => m(b) - m(a));
+  else if (sortBy === 'close') r.sort((a, b) => (a.total ? Math.abs(a.margin) : 9) - (b.total ? Math.abs(b.margin) : 9));
+  else if (sortBy === 'baseline') r.sort((a, b) => b.base - a.base);
+  else r.sort((a, b) => a.hd - b.hd);
+  return r;
+}
+
+function characterize(r) {
+  if (r.missing) return 'This race was not found in the results feed.';
+  if (!r.total) return `Waiting for the first votes. Baseline ${pts(r.base)}; early voters leaned ${pct(r.ev,0)} Dem.`;
+  const lead = r.margin >= 0 ? r.dem : r.rep;
+  const lp = r.margin >= 0 ? 'Democrat' : 'Republican';
+  const vsBase = r.margin - r.base;
+  let s = '';
+  if (r.called) s = `Race called for ${lead.name}. `;
+  else if (r.allIn) s = `All precincts counted: ${lead.name} (${lp}) finishes ${fmt(Math.abs(r.dem.votes - r.rep.votes))} votes ahead. `;
+  else s = `${lead.name} (${lp}) leads by ${fmt(Math.abs(r.dem.votes - r.rep.votes))} votes with ${pct(r.share,0)} of precincts counted. `;
+  s += `Dem running ${Math.abs(vsBase*100).toFixed(1)} pts ${vsBase >= 0 ? 'ahead of' : 'behind'} the district baseline (${pts(r.base)}).`;
+  if (r.needs !== null && !r.allIn && !r.called) {
+    if (r.margin < 0) s += r.needs > 1 ? ' Not enough vote appears to be left for the Dem to catch up (rough estimate).'
+                                       : ` To catch up, the Dem needs about ${pct(r.needs,0)} of the roughly ${fmt(r.remaining)} votes still out (rough estimate).`;
+    else s += r.needs < 0 ? ' The Rep would need more than all the remaining vote to catch up (rough estimate).'
+                          : ` The Rep needs about ${pct(1 - r.needs,0)} of the roughly ${fmt(r.remaining)} votes still out to catch up (rough estimate).`;
+  }
+  return s;
+}
+
+function render() {
+  const races = lastRaces; if (!races) return;
+  const cnt = k => races.filter(r => r.status === k).length;
+  const totPr = races.reduce((s, r) => s + r.pr, 0), totTp = races.reduce((s, r) => s + r.tp, 0);
+  document.getElementById('tally').innerHTML = [
+    ['flip', cnt('flip'), 'Flipped to Dem (all in or called)'],
+    ['dlead', cnt('dlead'), 'Dem leading'],
+    ['toss', cnt('toss'), 'Within 3 pts'],
+    ['rlead', cnt('rlead'), 'Rep leading'],
+    ['', cnt('hold'), 'Rep held'],
+    ['', `${totTp ? Math.round(totPr / totTp * 100) : 0}%`, `Precincts counted across all 14 (${fmt(totPr)} of ${fmt(totTp)})`],
+  ].map(([c, n, l]) => `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l} ${typeof n === 'number' ? 'of 14' : ''}</div></div>`).join('');
+
+  for (const r of races) {
+    const p = document.getElementById('house-' + r.hd);
+    if (p) { p.style.fill = STATUS[r.status].color; p.classList.toggle('sel', selected === r.hd); }
+  }
+
+  document.getElementById('cards').innerHTML = sorted(races).map(r => {
+    if (r.missing) return `<div class="card" id="card-${r.hd}"><h3>HD ${r.hd}</h3><div class="note">${characterize(r)}</div></div>`;
+    const tw = r.total || 1;
+    const bar = r.total ? `<div class="bar"><span style="width:${r.dem.votes/tw*100}%;background:var(--dem-lean)"></span><span style="width:${r.other/tw*100}%;background:#CBD5E1"></span><span style="width:${r.rep.votes/tw*100}%;background:var(--rep-lean)"></span></div>` : '';
+    const cand = (x, cls) => `<div class="nm"><b style="color:var(--${cls})">${x.party === 'DEM' ? 'D' : 'R'}</b> ${esc(x.name)}${x.won ? ' ✓' : ''}${x.party === 'REP' ? ' <span style="color:var(--muted)">(incumbent)</span>' : ''}</div><div class="pc" style="color:var(--${cls})">${r.total ? pct(x.votes / tw) : '–'}</div><div class="vt">${fmt(x.votes)}</div>`;
+    const ctable = r.counties.length ? `<details><summary>By county (${r.counties.length})</summary><table><tr><th>County</th><th>Precincts</th><th>Dem</th><th>Rep</th></tr>${r.counties.map(c => {
+      const di = r.cands.indexOf(r.dem), ri = r.cands.indexOf(r.rep);
+      return `<tr><td>${esc(c.name)}</td><td>${c.px} / ${c.py}</td><td>${fmt(c.v[di] || 0)}</td><td>${fmt(c.v[ri] || 0)}</td></tr>`;
+    }).join('')}</table></details>` : '';
+    return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}" id="card-${r.hd}">
+      <div class="ch"><div><h3>HD ${r.hd}</h3><div class="meta">${esc(r.region)} · Incumbent ${esc(r.inc)} (R)</div></div>
+      <span class="badge b-${r.status}">${STATUS[r.status].label}</span></div>
+      <div class="row">${cand(r.dem, 'dem')}${cand(r.rep, 'rep')}${bar}</div>
+      <div class="prog" title="Precincts counted"><span style="width:${r.tp ? r.pr / r.tp * 100 : 0}%"></span></div>
+      <div class="facts"><span>Precincts counted <b>${r.pr} of ${r.tp}</b> (${r.tp ? pct(r.pr / r.tp, 0) : '0%'})</span>
+        <span>Margin <b>${r.total ? pts(r.margin) : '–'}</b></span>
+        <span>Baseline <b>${pts(r.base)}</b></span>
+        <span>Early-vote lean <b>${pct(r.ev, 0)} D</b></span>
+        <span>Votes counted <b>${fmt(r.total)}</b></span></div>
+      <div class="note">${characterize(r)}</div>${ctable}</div>`;
+  }).join('');
+}
+
+function select(hd) {
+  selected = selected === hd ? null : hd;
+  render();
+  if (selected) document.getElementById('card-' + hd)?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function setupMap() {
+  const svg = document.querySelector('.mapcard svg');
+  const boxes = [];
+  for (const t of TARGETS) {
+    const p = document.getElementById('house-' + t.hd);
+    if (!p) continue;
+    p.classList.add('t');
+    p.addEventListener('click', () => select(t.hd));
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = 'HD ' + t.hd + ' · ' + t.region;
+    p.appendChild(title);
+    p.parentNode.appendChild(p); // draw targets on top
+    const b = p.getBBox(); boxes.push(b);
+    const tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    tx.setAttribute('x', b.x + b.width / 2); tx.setAttribute('y', b.y + b.height / 2 + 3);
+    tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('class', 'maplabel');
+    tx.textContent = t.hd; svg.appendChild(tx);
+  }
+}
+
+function demoData() {
+  const summary = [], details = [];
+  TARGETS.forEach((t, i) => {
+    const tp = 10 + i, pr = Math.floor(tp * [0, .3, .6, 1, .8, .2, 1, .5, .9, .4, .7, 0, 1, .55][i]);
+    const tot = pr * 400, ds = 0.5 + t.base + ((i * 37) % 9 - 4) / 100;
+    const dv = Math.round(tot * ds), rv = tot - dv - 12;
+    summary.push({K:t.key, C:'State House of Representatives, District ' + t.hd, CH:['REP ' + t.inc, 'DEM Demo Challenger ' + t.hd, 'Write-In'], P:['REP','DEM','NON'], V:pr ? [rv, dv, 12] : [0,0,0], W:[0,0,0]});
+    details.push({K:t.key, P:['Demo County'], PX:[pr], PY:[tp], V:[pr ? [rv, dv, 12] : [0,0,0]]});
+  });
+  return {summary, details};
+}
+
+document.getElementById('refresh').onclick = load;
+document.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortBy = b.dataset.sort; render(); });
+document.getElementById('demo').hidden = !DEMO;
+setInterval(() => {
+  const s = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
+  document.getElementById('next').textContent = nextAt ? `· next check in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '';
+  if (nextAt && Date.now() >= nextAt) load();
+}, 1000);
+setupMap();
+load();
+</script>
+</body>
+</html>
