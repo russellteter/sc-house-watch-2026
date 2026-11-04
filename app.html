@@ -294,6 +294,9 @@ const refreshMs = () => 2 * 60 * 1000; // every 2 minutes for election night
 const HOUSE = /*HOUSE*/[];
 // For each county and county contest id: the precincts in that race (fetched from the county pages at build time; failsafe/provisional excluded)
 const PREC = /*PRECINCTS*/{};
+// Last-resort copy of the statewide contest list (votes zeroed), used only if the statewide feed is down and nothing is cached
+const STATE_SNAPSHOT = /*STATE_SNAPSHOT*/null;
+let stateDown = null;
 // Area label = sheet region + the counties the state lists for the race (the sheet mislabels HD 28, 39 and 44)
 HOUSE.forEach(h => { h.region = `${h.region.split('/')[0].trim()} / ${h.counties.join(', ')}`; });
 const SEATS = 124, MAJ = 63, SUPER = 83, D_BREAK = SEATS - SUPER + 1; // 42
@@ -457,8 +460,19 @@ async function load() {
     let summary, details, chsSum = null;
     if (DEMO) { demoTick++; ({summary, details, chsSum} = demoData(demoTick)); version = 'demo-' + demoTick; lastPosted = new Date().toUTCString(); }
     else {
-      [summary, details] = await loadFeed(ELECTION, ['json/en/summary.json', 'json/details.json']);
-      details = details.Contests || details;
+      try {
+        [summary, details] = await loadFeed(ELECTION, ['json/en/summary.json', 'json/details.json']);
+        details = details.Contests || details;
+        stateDown = null;
+        try { localStorage.setItem('scwatch-state', JSON.stringify({summary, details, lastPosted, version})); } catch (e) {}
+      } catch (e) {
+        // statewide feed down: use the last good copy; the county pages still supply every vote count
+        let cached = null; try { cached = JSON.parse(localStorage.getItem('scwatch-state') || 'null'); } catch (e2) {}
+        if (cached) { summary = cached.summary; details = cached.details; lastPosted = cached.lastPosted; version = cached.version; }
+        else if (STATE_SNAPSHOT) { summary = STATE_SNAPSHOT.summary; details = STATE_SNAPSHOT.details.Contests; lastPosted = null; version = 'snapshot'; }
+        else throw e;
+        stateDown = e.message;
+      }
       countyInfo = await loadCounties(details);
       ({summary, details, stats: mergeStats} = mergeCounty(summary, details, countyInfo.counties));
       chsSum = countyInfo.counties.Charleston ? countyInfo.counties.Charleston.raw : null;
@@ -471,7 +485,7 @@ async function load() {
     render();
     const lms = countyInfo ? Object.values(countyInfo.counties).map(c => c.lm).filter(Boolean) : [];
     const newest = lms.length ? ` · newest county posting ${tm(Math.max(...lms))} ET` : '';
-    const roll = lastPosted && !isNaN(Date.parse(lastPosted)) ? ` · statewide rollup ${tm(Date.parse(lastPosted))}` : '';
+    const roll = stateDown ? ` · statewide feed down (${stateDown}), running on county pages` : lastPosted && !isNaN(Date.parse(lastPosted)) ? ` · statewide rollup ${tm(Date.parse(lastPosted))}` : '';
     const cf = countyInfo ? ` · ${countyInfo.total - countyInfo.fail.length} of ${countyInfo.total} county feeds read${countyInfo.fail.length ? ' (using the statewide numbers for ' + countyInfo.fail.join(', ') + ')' : ''}` : '';
     setStat(`Checked ${tm(Date.now())} ET${newest}${roll}${cf}`, countyInfo && countyInfo.fail.length ? 'err' : 'live');
   } catch (e) {
