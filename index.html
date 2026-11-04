@@ -34,7 +34,7 @@ button:hover{border-color:var(--brand);color:var(--brand)}
 .tile.flip .n{color:var(--flip)}.tile.dlead .n{color:var(--dem)}.tile.rlead .n{color:var(--rep)}.tile.toss .n{color:var(--toss)}
 .grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:960px){.grid{grid-template-columns:1fr}}
-.mapcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;position:sticky;top:12px}
+.mapcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:16px}
 .mapcard svg{width:100%;height:auto;display:block}
 .mapcard path{fill:#EEF2F6;stroke:#fff;stroke-width:.4;transition:fill .3s}
 .mapcard path.t{stroke:#0F172A;stroke-width:1.1;cursor:pointer}
@@ -102,12 +102,8 @@ footer a{color:var(--brand)}
 
 <div class="tally" id="tally"></div>
 
-<section class="xsec">
-  <h2>Other starred races</h2>
-  <div class="xgrid" id="extras"></div>
-</section>
-
 <div class="grid">
+  <div>
   <div class="mapcard">
     <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width="800" height="531" viewBox="0 0 800 531" stroke-linecap="round" stroke-linejoin="round">
 <g id="tl_2024_45_sldl">
@@ -247,6 +243,11 @@ footer a{color:var(--brand)}
       <span><i style="background:#CBD5E1"></i>No votes yet</span>
     </div>
   </div>
+  <section class="xsec">
+    <h2>Other starred races</h2>
+    <div class="xgrid" id="extras"></div>
+  </section>
+  </div>
   <div>
     <div class="toolbar">Sort:
       <button data-sort="hd">District</button>
@@ -259,7 +260,7 @@ footer a{color:var(--brand)}
 </div>
 
 <footer>
-  Source: South Carolina Election Commission official results feeds, statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 10 minutes. Governor and U.S. House 1 show whole-race totals, with Charleston County's share underneath. All results are unofficial until certified.
+  Source: South Carolina Election Commission official results feeds, statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 5 minutes until 8:33 PM ET, then every 10 minutes. Governor and U.S. House 1 show whole-race totals, with Charleston County's share underneath. All results are unofficial until certified.
   "Precincts counted" adds up each county's precincts for the district; SC also reports absentee and early votes as their own precincts, so early votes can arrive in a lump.
   "Dem needs" assumes the remaining precincts are the same size as those already counted, so treat it as a rough guide.
   Baseline = average top-of-ticket Dem margin 2020–24 in the district; early-vote lean = modeled party share of early voters through 2 Nov (both from the "Challenge every seat 2026" sheet).
@@ -268,7 +269,9 @@ footer a{color:var(--brand)}
 
 <script>
 const ELECTION = 'https://www.enr-scvotes.org/SC/127300';
-const REFRESH_MS = 10 * 60 * 1000;
+// Every 5 minutes until 8:33 PM ET (01:33 UTC), then every 10 minutes. Fixed clock time, so reloading the page doesn't extend it.
+const FAST_UNTIL = Date.parse('2026-11-04T01:33:00Z');
+const refreshMs = () => (Date.now() < FAST_UNTIL ? 5 : 10) * 60 * 1000;
 // From "Challenge every seat 2026" sheet: base = Av. Top Tkt. Perf. 20-24 (Dem margin), ev = early-vote Dem share through 11/2
 const TARGETS = [
   {hd:12, key:'28024', region:'Upstate / Greenwood', inc:'Daniel Gibson', base:-0.0148, ev:0.5954},
@@ -342,7 +345,7 @@ async function load() {
     console.error(e);
     setStat('Could not reach the results feed (' + e.message + '). Will retry.', 'err');
   }
-  nextAt = Date.now() + REFRESH_MS;
+  nextAt = Date.now() + refreshMs();
 }
 
 async function loadFeed(base, files) {
