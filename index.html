@@ -152,6 +152,7 @@ table.house .tg{font:600 10px 'DM Sans',sans-serif;color:var(--brand);margin-lef
 .rep b{font:700 13px 'DM Sans',sans-serif;color:var(--head)}
 .rbar{width:52px;height:6px;border-radius:3px;background:#E2E8F0;overflow:hidden;display:inline-block}
 .rbar{display:inline-flex}.rbar span{display:block;height:100%;background:var(--brand)}.rbar span.pp,.pbar span.pp{background:#C7D2FE}
+.rep.rexp{background:#EEF2FF}.rep.rexp .rbar span{background:#4F46E5}.rep.rexp b{color:#3730A3}
 .vtl{font-size:12px;color:var(--muted);margin-top:5px}.vtl b{color:var(--text)}.vtl b.none{color:var(--toss)}
 .rep.rfull{background:var(--flip-tint)}.rep.rfull .rbar span{background:var(--flip)}.rep.rfull b{color:var(--flip)}
 .rep.r0 b{color:var(--muted)}
@@ -173,6 +174,25 @@ details td:first-child,details th:first-child{text-align:left}
 .xcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .xcard h3{font-size:15px}
 .demo{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-weight:600}
+
+.senate .scard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.senate .top{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:900px){.senate .top{grid-template-columns:1fr}}
+.senate h2{font-size:18px;margin-bottom:6px}
+.senate .big{font:700 34px/1 'DM Sans',sans-serif}
+.senate .an li{margin:5px 0}
+.senate .an ul{margin:6px 0 0;padding-left:18px;font-size:13.5px}
+.cmap{width:100%;height:auto;display:block}
+.cmap path{stroke:#fff;stroke-width:.8;fill:#EEF2F6;cursor:pointer}.cmap path:hover{stroke:#0F172A;stroke-width:1.5}
+.cmap .clab{font:600 7.5px 'DM Sans',sans-serif;fill:#0F172A;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:2px;pointer-events:none}
+.ctable{width:100%;border-collapse:collapse;font-size:12.5px}
+.ctable th{position:sticky;top:0;background:#fff;text-align:left;padding:6px;border-bottom:2px solid var(--line);font:600 12px 'DM Sans',sans-serif;color:var(--muted);cursor:pointer;white-space:nowrap}
+.ctable td{padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ctable th.num,.ctable td.num{text-align:right;font-variant-numeric:tabular-nums}
+.ctable tr:hover td{background:var(--soft)}
+.ctwrap{max-height:70vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.mlegend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.mlegend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 footer{margin-top:24px;color:var(--muted);font-size:12px;line-height:1.6}
 footer a{color:var(--brand)}
 </style>
@@ -196,16 +216,67 @@ footer a{color:var(--brand)}
   <button data-view="all">Whole House <span class="tag">124 seats</span></button>
   <button data-view="targets">Key Flip Targets <span class="tag">14 + HD 115 to defend</span></button>
   <button data-view="local">Charleston starred <span class="tag">HD 110, 115, 116</span></button>
+  <button data-view="senate">U.S. Senate <span class="tag">county by county</span></button>
 </nav>
 
 <section class="score" id="score"></section>
 
-<section class="log">
+<section id="senate" class="senate" hidden></section>
+<template id="countysvg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 634" class="cmap">
+<path id="county-Allendale" data-county="Allendale" d="M377.5 436.1L351.8 453.3L347.6 473.5L323.8 492.3L323.8 491.9L320.7 479.2L308.0 448.6L308.9 445.6L309.4 441.7L308.6 439.4L306.1 436.5L301.1 432.3L288.8 422.9L301.1 409.8L330.5 419.8L359.0 417.7L377.5 436.1Z"><title>Allendale</title></path><text class="clab" x="326" y="446">Allendale</text>
+<path id="county-Bamberg" data-county="Bamberg" d="M354.6 353.6L399.7 379.9L424.8 406.1L377.5 436.1L359.0 417.7L353.3 409.3L354.1 353.5L354.6 353.6Z"><title>Bamberg</title></path><text class="clab" x="370" y="385">Bamberg</text>
+<path id="county-Clarendon" data-county="Clarendon" d="M468.6 312.8L477.8 298.8L492.2 298.5L491.4 288.1L514.9 280.9L561.6 252.4L566.5 264.5L578.1 264.6L558.1 288.1L561.7 297.3L540.5 342.2L520.5 352.8L498.5 355.5L474.9 329.9L468.6 312.8Z"><title>Clarendon</title></path><text class="clab" x="518" y="303">Clarendon</text>
+<path id="county-Fairfield" data-county="Fairfield" d="M420.1 188.1L375.2 199.0L361.5 206.9L338.5 193.9L320.8 143.0L321.1 141.2L320.5 137.1L320.1 136.0L320.6 130.7L321.3 128.6L320.9 127.5L399.5 132.8L411.5 133.3L411.2 150.3L429.4 166.4L420.1 188.1Z"><title>Fairfield</title></path><text class="clab" x="363" y="156">Fairfield</text>
+<path id="county-Hampton" data-county="Hampton" d="M420.0 500.4L418.2 501.3L412.8 509.1L407.4 517.0L388.7 490.7L343.5 532.3L338.2 529.3L336.5 529.0L333.3 527.4L326.4 522.2L322.7 517.6L321.5 515.4L321.6 514.3L322.2 513.8L323.8 492.3L347.6 473.5L351.8 453.3L377.5 436.1L407.7 474.8L420.0 500.4Z"><title>Hampton</title></path><text class="clab" x="360" y="503">Hampton</text>
+<path id="county-Jasper" data-county="Jasper" d="M411.4 625.1L406.9 630.7L409.1 632.3L410.2 634.2L390.5 626.7L384.0 624.2L380.9 623.5L372.3 618.5L371.7 617.6L370.9 608.8L370.3 595.7L369.9 585.9L371.1 584.0L370.8 580.1L368.8 572.8L367.7 571.3L363.2 567.5L358.1 547.8L345.4 533.4L343.5 532.3L388.7 490.7L407.4 517.0L412.8 509.1L419.5 558.8L402.0 581.1L390.1 579.9L388.4 592.8L411.4 625.1Z"><title>Jasper</title></path><text class="clab" x="384" y="585">Jasper</text>
+<path id="county-Orangeburg" data-county="Orangeburg" d="M354.6 353.6L354.1 353.5L329.1 343.5L360.0 311.0L376.7 302.6L384.0 300.2L401.2 319.8L411.2 317.7L423.1 320.8L447.8 347.4L465.6 328.5L474.9 329.9L498.5 355.5L520.5 352.8L515.2 381.6L497.3 390.0L476.9 385.5L473.8 374.6L426.0 405.3L425.6 405.5L425.1 406.1L399.7 379.9L354.6 353.6Z"><title>Orangeburg</title></path><text class="clab" x="420" y="358">Orangeburg</text>
+<path id="county-Saluda" data-county="Saluda" d="M296.1 266.2L282.8 278.8L252.0 268.4L242.4 246.6L223.5 249.4L246.5 214.7L248.1 205.9L269.5 204.3L301.5 225.4L312.7 226.4L296.1 266.2Z"><title>Saluda</title></path><text class="clab" x="270" y="241">Saluda</text>
+<path id="county-Darlington" data-county="Darlington" d="M545.3 224.5L535.6 216.0L538.7 202.4L528.0 168.6L509.4 169.0L509.4 168.6L549.9 143.4L576.6 143.6L585.7 135.5L603.7 144.8L598.9 154.5L609.9 161.7L614.3 180.8L576.9 201.0L557.5 216.0L545.3 224.5Z"><title>Darlington</title></path><text class="clab" x="556" y="177">Darlington</text>
+<path id="county-Dorchester" data-county="Dorchester" d="M497.3 390.0L507.7 415.4L510.9 417.6L532.6 437.1L544.3 455.8L528.4 472.2L530.3 473.1L531.0 475.3L532.8 477.6L490.7 469.7L492.5 432.6L454.0 428.2L439.4 410.2L426.0 405.3L473.8 374.6L476.9 385.5L497.3 390.0Z"><title>Dorchester</title></path><text class="clab" x="498" y="430">Dorchester</text>
+<path id="county-Edgefield" data-county="Edgefield" d="M282.8 278.8L222.8 335.1L220.2 332.6L217.2 328.8L213.4 326.5L208.4 324.3L205.5 323.6L209.0 314.8L197.3 303.6L196.2 288.5L206.0 275.7L199.0 255.8L217.1 251.1L223.5 249.4L242.4 246.6L252.0 268.4L282.8 278.8Z"><title>Edgefield</title></path><text class="clab" x="223" y="295">Edgefield</text>
+<path id="county-Kershaw" data-county="Kershaw" d="M477.6 208.0L461.3 221.4L456.9 221.4L454.6 219.9L455.0 221.8L451.7 222.2L451.1 222.6L449.9 222.9L448.0 224.0L447.9 224.6L445.5 225.0L445.0 224.8L443.8 225.4L442.2 225.5L437.8 227.9L412.8 205.3L420.1 188.1L429.4 166.4L411.2 150.3L433.8 133.9L434.4 145.9L470.3 139.9L465.9 129.9L489.5 119.0L502.8 141.6L509.4 168.6L509.4 169.0L487.3 183.0L477.6 208.0Z"><title>Kershaw</title></path><text class="clab" x="459" y="191">Kershaw</text>
+<path id="county-Lee" data-county="Lee" d="M512.7 234.7L511.1 234.4L503.9 225.7L477.4 219.2L477.6 208.0L487.3 183.0L509.4 169.0L528.0 168.6L538.7 202.4L535.6 216.0L545.3 224.5L557.3 232.2L527.4 251.3L512.7 234.7Z"><title>Lee</title></path><text class="clab" x="515" y="217">Lee</text>
+<path id="county-McCormick" data-county="McCormick" d="M217.1 251.1L199.0 255.8L206.0 275.7L196.2 288.5L197.3 303.6L209.0 314.8L205.5 323.6L204.1 323.3L203.4 323.6L202.4 323.4L195.0 318.4L192.2 315.5L188.5 304.4L183.7 291.1L174.8 281.3L170.9 277.7L157.7 268.6L157.0 268.4L154.6 268.9L153.5 268.5L131.0 250.6L125.6 239.2L136.7 227.4L170.5 228.9L174.0 247.4L184.1 238.0L191.6 246.0L217.4 245.0L217.1 251.1Z"><title>McCormick</title></path><text class="clab" x="182" y="276">McCormick</text>
+<path id="county-Newberry" data-county="Newberry" d="M334.8 202.3L318.5 215.8L326.5 225.7L312.7 226.4L301.5 225.4L269.5 204.3L248.1 205.9L246.5 214.7L234.0 201.2L242.2 181.8L261.0 168.8L284.1 135.2L301.3 152.9L320.8 143.0L338.5 193.9L333.7 200.8L334.8 202.3Z"><title>Newberry</title></path><text class="clab" x="295" y="194">Newberry</text>
+<path id="county-Oconee" data-county="Oconee" d="M75.7 30.9L72.6 47.7L75.2 93.5L85.2 117.3L59.9 146.0L59.4 147.0L57.5 147.0L52.8 145.2L49.9 143.3L46.5 141.0L44.1 138.7L40.8 135.1L30.3 123.4L30.2 122.2L30.8 121.8L18.6 117.1L10.1 111.2L2.4 104.4L0.2 101.6L0.3 99.3L0.0 98.8L2.2 93.7L4.7 84.2L11.5 77.7L14.2 75.4L18.2 66.5L34.8 57.1L40.6 41.9L57.2 36.7L75.7 30.9Z"><title>Oconee</title></path><text class="clab" x="34" y="102">Oconee</text>
+<path id="county-Richland" data-county="Richland" d="M433.2 289.3L404.9 278.9L389.1 265.7L381.2 240.7L365.6 226.2L345.3 222.3L334.8 202.3L333.7 200.8L338.5 193.9L361.5 206.9L375.2 199.0L420.1 188.1L412.8 205.3L437.8 227.9L442.2 225.5L443.8 225.4L445.0 224.8L445.5 225.0L447.9 224.6L448.0 224.0L449.9 222.9L451.1 222.6L451.7 222.2L455.0 221.8L452.1 271.1L454.3 293.0L433.2 289.3Z"><title>Richland</title></path><text class="clab" x="413" y="231">Richland</text>
+<path id="county-Spartanburg" data-county="Spartanburg" d="M222.8 108.2L200.5 84.9L187.4 72.0L188.9 2.9L192.4 3.1L194.0 3.2L195.5 3.3L197.0 3.4L230.0 4.7L245.8 5.3L265.6 55.5L272.8 59.5L260.9 74.6L249.2 123.0L222.8 108.2Z"><title>Spartanburg</title></path><text class="clab" x="222" y="47">Spartanburg</text>
+<path id="county-Sumter" data-county="Sumter" d="M512.7 234.7L527.4 251.3L557.3 232.2L575.1 244.1L561.6 252.4L514.9 280.9L491.4 288.1L492.2 298.5L477.8 298.8L468.6 312.8L454.3 293.0L452.1 271.1L455.0 221.8L454.6 219.9L456.9 221.4L461.3 221.4L477.6 208.0L477.4 219.2L503.9 225.7L511.0 234.4L512.7 234.7Z"><title>Sumter</title></path><text class="clab" x="496" y="249">Sumter</text>
+<path id="county-Williamsburg" data-county="Williamsburg" d="M669.8 281.8L669.8 282.7L670.4 283.5L670.0 283.8L670.5 284.6L671.0 285.7L655.6 303.8L651.2 327.0L634.2 342.2L611.1 380.5L598.0 375.6L562.1 341.4L540.5 342.2L561.7 297.3L558.1 288.1L578.1 264.6L590.9 274.6L641.1 286.6L669.8 281.8Z"><title>Williamsburg</title></path><text class="clab" x="625" y="306">Williamsburg</text>
+<path id="county-Abbeville" data-county="Abbeville" d="M170.5 228.9L136.7 227.4L125.6 239.2L118.3 224.1L116.4 221.8L115.4 221.1L113.8 217.7L112.3 215.4L107.8 213.6L105.6 211.7L103.2 206.1L101.6 200.0L172.7 145.1L183.9 159.9L169.3 173.3L183.7 197.9L180.5 220.1L170.5 228.9Z"><title>Abbeville</title></path><text class="clab" x="135" y="210">Abbeville</text>
+<path id="county-Aiken" data-county="Aiken" d="M304.3 276.6L322.1 295.2L360.0 311.0L329.1 343.5L305.3 365.1L265.3 401.8L262.7 405.4L249.5 392.0L241.1 375.3L239.4 359.8L231.9 347.8L230.4 345.4L223.7 337.0L222.5 335.5L282.8 278.8L296.1 266.2L296.5 267.3L297.4 268.6L297.9 269.1L298.9 269.6L299.4 269.5L300.2 269.9L301.2 271.3L301.0 272.0L301.2 272.5L301.6 273.4L302.3 274.2L302.4 275.2L303.5 275.7L304.2 276.3Z"><title>Aiken</title></path><text class="clab" x="285" y="312">Aiken</text>
+<path id="county-Anderson" data-county="Anderson" d="M143.9 78.1L149.4 116.9L155.1 130.5L172.7 145.1L101.6 200.0L101.1 196.8L101.3 196.3L101.5 195.8L99.3 186.6L97.5 183.1L83.8 157.1L79.4 148.1L79.6 147.6L78.1 146.1L74.8 144.7L68.7 144.6L62.0 145.3L59.9 146.0L85.2 117.3L93.7 107.5L143.9 78.1Z"><title>Anderson</title></path><text class="clab" x="102" y="151">Anderson</text>
+<path id="county-Calhoun" data-county="Calhoun" d="M389.1 265.7L404.9 278.9L433.2 289.3L454.3 293.0L468.6 312.8L474.9 329.9L465.6 328.5L447.8 347.4L423.1 320.8L411.2 317.7L401.2 319.8L384.0 300.2L403.4 290.5L381.4 292.2L389.1 265.7Z"><title>Calhoun</title></path><text class="clab" x="422" y="303">Calhoun</text>
+<path id="county-Chester" data-county="Chester" d="M311.6 77.7L408.1 77.8L414.4 102.8L408.4 115.6L411.5 133.3L399.5 132.8L320.9 127.5L311.6 77.7Z"><title>Chester</title></path><text class="clab" x="373" y="106">Chester</text>
+<path id="county-Chesterfield" data-county="Chesterfield" d="M509.4 168.6L502.8 141.6L489.5 119.0L464.0 78.5L476.7 78.6L482.3 78.7L482.8 78.7L485.1 78.8L486.6 78.8L487.7 78.9L488.1 78.9L490.9 79.0L504.1 79.2L541.0 79.9L544.6 80.0L545.3 80.0L550.3 80.2L552.9 80.2L569.5 80.7L578.7 103.2L594.3 118.9L585.7 135.5L576.6 143.6L549.9 143.4L509.4 168.6Z"><title>Chesterfield</title></path><text class="clab" x="519" y="98">Chesterfield</text>
+<path id="county-Cherokee" data-county="Cherokee" d="M315.1 74.1L311.1 68.8L272.8 59.5L265.6 55.5L245.8 5.3L248.5 5.4L263.4 6.1L309.0 8.1L314.4 8.4L315.9 8.4L330.2 9.1L323.0 32.8L309.9 36.1L315.1 74.1Z"><title>Cherokee</title></path><text class="clab" x="299" y="29">Cherokee</text>
+<path id="county-Dillon" data-county="Dillon" d="M632.6 195.6L618.4 182.2L648.9 117.7L664.1 132.8L668.6 137.5L669.7 138.6L690.6 160.5L691.8 161.6L698.5 168.5L699.9 169.9L711.9 182.0L702.4 191.1L660.5 181.7L643.8 184.2L632.6 195.6Z"><title>Dillon</title></path><text class="clab" x="670" y="165">Dillon</text>
+<path id="county-Greenville" data-county="Greenville" d="M192.8 104.7L185.6 134.7L172.7 145.1L155.1 130.5L149.4 116.9L143.9 78.1L135.4 38.9L127.0 27.3L97.8 28.4L110.7 18.1L110.7 17.7L128.1 13.6L129.4 13.2L135.7 10.3L138.9 9.6L145.7 7.0L161.0 0.0L166.3 0.8L176.9 2.4L182.1 2.4L186.5 2.7L188.9 2.9L187.4 72.0L200.5 84.9L192.8 104.7Z"><title>Greenville</title></path><text class="clab" x="155" y="41">Greenville</text>
+<path id="county-Greenwood" data-county="Greenwood" d="M246.5 214.7L223.5 249.4L217.1 251.1L217.4 245.0L191.6 246.0L184.1 238.0L174.0 247.4L170.5 228.9L180.5 220.1L183.7 197.9L169.3 173.3L183.9 159.9L196.7 175.7L234.0 201.2L246.5 214.7Z"><title>Greenwood</title></path><text class="clab" x="201" y="218">Greenwood</text>
+<path id="county-Horry" data-county="Horry" d="M723.3 327.2L707.0 327.2L692.1 300.5L667.3 247.8L702.6 194.7L701.2 193.5L702.4 191.1L711.9 182.0L771.5 242.4L771.9 242.8L781.8 252.9L800.0 271.4L797.9 272.1L792.7 272.8L778.2 278.1L771.2 281.6L761.5 287.9L754.8 292.9L746.5 300.5L734.0 313.6L723.3 327.2Z"><title>Horry</title></path><text class="clab" x="743" y="267">Horry</text>
+<path id="county-Laurens" data-county="Laurens" d="M172.7 145.1L185.6 134.7L192.8 104.7L200.5 84.9L222.8 108.2L249.2 123.0L284.1 135.2L261.0 168.8L242.2 181.8L234.0 201.2L196.7 175.7L183.9 159.9L172.7 145.1Z"><title>Laurens</title></path><text class="clab" x="215" y="144">Laurens</text>
+<path id="county-Marlboro" data-county="Marlboro" d="M600.0 80.8L608.5 81.0L608.9 81.0L618.2 87.8L618.7 88.2L630.3 99.5L631.5 100.7L637.2 106.3L642.2 111.2L644.0 113.0L645.3 114.5L645.8 114.9L646.9 115.8L648.9 117.7L618.4 182.2L618.1 181.6L617.0 181.9L616.5 181.6L614.3 180.8L609.9 161.7L598.9 154.5L603.7 144.8L585.7 135.5L594.3 118.9L578.7 103.2L569.5 80.7L595.1 80.8L599.8 80.8Z"><title>Marlboro</title></path><text class="clab" x="617" y="117">Marlboro</text>
+<path id="county-Union" data-county="Union" d="M249.2 123.0L260.9 74.6L272.8 59.5L311.1 68.8L315.1 74.1L314.4 75.8L311.6 77.7L320.9 127.5L321.3 128.6L320.6 130.7L320.1 136.0L320.5 137.1L321.1 141.2L320.8 143.0L301.3 152.9L284.1 135.2L249.2 123.0Z"><title>Union</title></path><text class="clab" x="301" y="112">Union</text>
+<path id="county-Colleton" data-county="Colleton" d="M478.1 544.2L465.7 528.1L447.7 518.7L446.4 508.2L420.0 500.4L407.7 474.8L377.5 436.1L424.8 406.1L425.5 405.7L425.8 405.2L439.4 410.2L454.0 428.2L492.5 432.6L490.7 469.7L483.3 495.8L492.6 511.7L488.2 532.0L498.8 541.2L515.9 535.3L511.3 538.0L502.1 545.6L501.2 545.5L500.2 543.1L496.9 542.0L494.1 544.0L493.1 545.5L492.2 546.2L488.7 547.1L488.3 546.8L487.9 546.0L487.8 543.1L487.0 541.6L484.4 540.5L482.3 541.8L480.0 542.2L478.9 541.8L478.1 544.2Z"><title>Colleton</title></path><text class="clab" x="470" y="502">Colleton</text>
+<path id="county-Florence" data-county="Florence" d="M633.2 197.9L629.1 206.8L638.0 222.3L643.5 254.2L669.8 281.8L641.1 286.6L590.9 274.6L578.1 264.6L566.5 264.5L561.6 252.4L575.1 244.1L557.3 232.2L545.3 224.5L557.5 216.0L576.9 201.0L614.3 180.8L616.5 181.6L617.0 181.9L618.1 181.6L618.4 182.2L632.6 195.6L633.2 196.8L633.2 197.9Z"><title>Florence</title></path><text class="clab" x="606" y="223">Florence</text>
+<path id="county-Georgetown" data-county="Georgetown" d="M684.6 302.8L689.0 301.0L691.2 300.9L690.5 299.6L692.1 300.5L707.0 327.2L723.3 327.2L722.5 328.3L719.0 334.9L716.9 336.8L709.6 344.8L706.8 349.3L701.2 360.8L699.2 365.9L698.4 371.3L697.4 374.9L696.7 376.1L693.7 390.6L693.7 393.9L695.0 400.1L692.5 406.7L691.2 408.2L687.9 410.3L684.1 414.0L682.8 416.5L675.4 419.4L679.0 414.2L656.4 404.5L654.9 401.8L650.8 398.4L649.4 398.8L611.1 380.5L634.2 342.2L651.2 327.0L655.6 303.8L671.0 285.7L671.6 286.5L672.3 287.2L672.7 288.4L673.0 289.0L673.7 289.9L674.7 290.8L674.9 291.2L675.0 291.6L675.0 292.2L674.8 292.9L674.8 293.4L675.4 293.8L676.1 294.2L675.6 294.8L675.2 295.8L675.8 296.9L675.9 297.9L676.6 298.4L677.1 298.4L678.5 297.3L678.9 298.1L678.6 298.5L678.0 298.8L678.0 299.4L678.0 299.9L678.5 299.9L678.9 299.4L679.6 299.6L679.7 300.2L679.2 300.7L680.2 300.9L680.8 301.1L682.2 300.9L683.0 300.5L683.5 300.5L683.7 301.1L682.6 301.5L682.2 302.2L682.7 302.5L684.0 302.7L684.6 302.8Z"><title>Georgetown</title></path><text class="clab" x="681" y="322">Georgetown</text>
+<path id="county-Barnwell" data-county="Barnwell" d="M262.7 405.4L265.3 401.8L305.3 365.1L328.8 343.6L354.1 353.5L353.3 409.3L359.0 417.7L330.5 419.8L301.1 409.8L288.8 422.9L288.0 422.3L275.3 418.1L262.7 405.4Z"><title>Barnwell</title></path><text class="clab" x="307" y="396">Barnwell</text>
+<path id="county-Beaufort" data-county="Beaufort" d="M420.0 500.4L446.4 508.2L447.7 518.7L465.7 528.1L478.1 544.2L477.6 545.7L476.8 549.0L477.6 551.8L479.7 556.2L483.3 556.5L485.4 559.1L485.9 560.8L486.0 563.3L485.2 566.2L483.4 571.1L481.5 573.8L481.7 575.9L479.9 577.3L471.3 581.4L467.7 583.8L466.7 584.7L462.5 586.5L458.3 586.5L454.6 589.1L451.2 590.0L447.9 591.4L446.2 597.8L442.9 600.9L437.5 609.0L432.9 613.1L426.1 616.6L422.3 619.2L420.8 619.4L419.7 618.5L419.2 618.6L417.0 619.2L414.6 621.2L411.4 625.1L388.4 592.8L390.1 579.9L402.0 581.1L419.5 558.8L412.8 509.1L418.2 501.3L420.0 500.4Z"><title>Beaufort</title></path><text class="clab" x="448" y="573">Beaufort</text>
+<path id="county-Charleston" data-county="Charleston" d="M649.4 398.8L650.8 398.4L654.9 401.8L656.4 404.5L679.0 414.2L675.4 419.4L668.8 423.4L667.6 427.0L667.9 428.3L667.3 431.3L663.8 440.1L656.6 440.6L654.4 440.0L653.3 438.4L647.0 439.9L643.3 441.1L642.4 438.2L639.4 434.8L636.8 434.3L631.0 437.1L627.1 440.1L626.2 443.1L623.8 445.5L622.8 446.9L621.0 450.8L621.0 452.4L621.8 454.4L622.9 456.2L626.3 456.1L627.0 455.1L628.1 454.5L629.0 456.0L627.9 460.1L618.8 463.6L614.7 466.8L608.1 471.3L607.4 473.3L606.8 474.2L604.0 476.2L604.5 478.6L602.9 480.1L588.8 485.9L587.6 488.0L584.0 490.0L582.6 490.3L579.6 489.8L578.7 490.9L578.4 492.2L579.3 494.3L579.0 495.8L576.0 502.3L576.6 504.4L571.4 508.3L562.7 513.3L561.5 513.4L559.6 516.0L558.8 518.0L557.5 518.9L555.7 519.5L551.2 519.2L544.6 520.6L537.2 523.2L532.7 525.6L529.6 529.3L528.9 532.0L526.1 530.5L525.2 530.4L523.3 530.1L516.5 535.0L515.9 535.3L498.8 541.2L488.2 532.0L492.6 511.7L483.3 495.8L490.7 469.7L532.8 477.6L531.0 475.3L530.3 473.1L528.4 472.2L544.3 455.8L532.6 437.1L548.2 441.5L555.5 461.4L565.9 459.7L569.3 476.5L581.5 466.6L616.7 416.7L637.4 411.8L649.4 398.8Z"><title>Charleston</title></path><text class="clab" x="593" y="470">Charleston</text>
+<path id="county-Lancaster" data-county="Lancaster" d="M406.7 26.7L417.7 41.7L423.3 49.4L427.4 54.9L424.9 76.9L428.1 78.0L429.1 78.1L449.9 78.3L453.3 78.3L454.1 78.3L464.0 78.5L489.5 119.0L465.9 129.9L470.3 139.9L434.4 145.9L433.8 133.9L411.2 150.3L411.5 133.3L408.4 115.6L414.4 102.8L408.1 77.8L413.0 51.8L406.7 26.7Z"><title>Lancaster</title></path><text class="clab" x="434" y="87">Lancaster</text>
+<path id="county-York" data-county="York" d="M385.7 20.3L385.1 21.4L383.4 21.9L382.5 22.8L381.6 24.8L381.5 27.4L381.6 29.7L384.3 33.1L398.2 23.5L402.0 20.6L406.7 26.7L413.0 51.8L408.1 77.8L311.6 77.7L314.4 75.8L315.1 74.1L309.9 36.1L323.0 32.8L330.2 9.1L336.6 9.4L346.4 9.9L351.0 10.1L376.2 11.6L383.9 12.4L384.0 12.9L385.7 20.3Z"><title>York</title></path><text class="clab" x="369" y="30">York</text>
+<path id="county-Lexington" data-county="Lexington" d="M334.8 202.3L345.3 222.3L365.6 226.2L381.2 240.7L389.1 265.7L381.4 292.2L403.4 290.5L384.0 300.2L376.7 302.6L360.0 311.0L322.1 295.2L304.3 276.6L303.5 275.7L302.4 275.2L302.3 274.2L301.6 273.4L301.6 272.8L301.0 272.0L301.2 271.3L300.2 269.9L299.4 269.5L298.9 269.6L297.9 269.1L297.4 268.6L296.5 267.3L296.1 266.2L312.7 226.4L326.5 225.7L318.5 215.8L334.8 202.3Z"><title>Lexington</title></path><text class="clab" x="326" y="264">Lexington</text>
+<path id="county-Marion" data-county="Marion" d="M633.2 197.9L633.2 196.8L632.6 195.6L643.8 184.2L660.5 181.7L702.4 191.1L701.2 193.5L702.6 194.7L667.3 247.8L692.1 300.5L690.5 299.6L691.2 300.9L689.0 301.0L684.6 302.8L684.0 302.7L682.7 302.5L682.2 302.2L682.2 301.8L683.4 301.3L683.7 300.9L683.2 300.4L682.2 300.9L680.8 301.1L680.2 300.9L679.2 300.9L679.6 300.4L679.6 299.6L678.9 299.4L678.5 299.9L678.0 299.9L678.0 299.4L678.0 298.8L678.6 298.5L678.9 298.1L678.9 297.6L677.4 298.0L676.6 298.4L676.1 298.1L675.8 296.9L675.2 295.8L675.2 295.2L676.1 294.5L675.4 293.8L674.8 293.4L674.8 292.9L675.0 292.2L675.0 291.6L674.9 291.2L674.7 290.8L674.0 290.2L673.0 289.0L672.7 288.4L672.3 287.2L671.6 286.5L671.1 285.9L670.5 284.6L670.0 283.8L670.4 283.5L669.8 282.7L669.8 281.8L643.5 254.2L638.0 222.3L629.1 206.8L633.2 197.9Z"><title>Marion</title></path><text class="clab" x="674" y="281">Marion</text>
+<path id="county-Pickens" data-county="Pickens" d="M97.8 28.4L127.0 27.3L135.4 38.9L143.9 78.1L93.7 107.5L85.2 117.3L75.2 93.5L72.6 47.7L75.7 30.9L95.0 25.2L95.6 26.7L95.3 27.3L95.1 28.3L94.9 28.7L97.8 28.4Z"><title>Pickens</title></path><text class="clab" x="98" y="47">Pickens</text>
+<path id="county-Berkeley" data-county="Berkeley" d="M649.4 398.8L637.4 411.8L616.7 416.7L581.5 466.6L569.3 476.5L565.9 459.7L555.5 461.4L548.2 441.5L532.6 437.1L510.9 417.6L507.7 415.4L497.3 390.0L515.2 381.6L520.5 352.8L540.5 342.2L562.1 341.4L598.0 375.6L611.1 380.5L649.4 398.8Z"><title>Berkeley</title></path><text class="clab" x="567" y="409">Berkeley</text>
+</svg></template>
+
+<section class="log" id="logsec">
   <h2>Latest changes <span class="sub" id="logsub"></span></h2>
   <ol id="events"></ol>
 </section>
 
-<div class="grid">
+<div class="grid" id="housegrid">
   <div>
     <div class="mapcard">
       <div class="zoom" id="zoom">Zoom:
@@ -414,6 +485,9 @@ const STATUS = {
   wait:{label:'No votes yet', color:'#E2E8F0'},
 };
 const RECOUNT = 0.01;
+// Expected total statewide vote, used for the 'share of expected vote counted' estimate (2022: 1.72M, 2024: 2.56M). An assumption, not data.
+const EXPECTED_STATEWIDE = 1900000;
+const expPct = ballots => Math.min(99, Math.round(ballots / EXPECTED_STATEWIDE * 100));
 const FINAL = ['flip', 'dhold', 'hold', 'rflip', 'udem', 'urep', 'oth'];
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo');
@@ -422,8 +496,8 @@ const HKEY = DEMO ? null : 'scwatch-hist-127300';
 let view = 'all', selected = null, races = null, extras = null, extraErr = null, nextAt = 0, version = null, lastPosted = null;
 let targetSort = 'hd', tableSort = 'hd', tableDir = 1, tableFilter = 'all', demoTick = 0, unseen = false, hist = [];
 try { if (HKEY) hist = JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { hist = []; }
-try { const v = localStorage.getItem('scwatch-view'); if (['all', 'targets', 'local'].includes(v)) view = v; } catch (e) {}
-if (['all', 'targets', 'local'].includes(location.hash.slice(1))) view = location.hash.slice(1);
+try { const v = localStorage.getItem('scwatch-view'); if (['all', 'targets', 'local', 'senate'].includes(v)) view = v; } catch (e) {}
+if (['all', 'targets', 'local', 'senate'].includes(location.hash.slice(1))) view = location.hash.slice(1);
 
 const fmt = n => n.toLocaleString('en-US');
 const pct = (x, d=1) => (x * 100).toFixed(d) + '%';
@@ -439,6 +513,10 @@ function repPill(pr, tp, hasVotes, pp = 0) {
   const p = repPct(pr, tp), cls = p >= 100 ? 'rfull' : hasVotes || pr || pp ? 'rpart' : 'r0';
   const pw = tp ? Math.min(100 - p, pp / tp * 100) : 0;
   return `<span class="rep ${cls}" title="Complete = every vote type counted in that precinct. Partly counted = early/absentee votes in, Election Day count not finished."><span class="rbar"><span style="width:${p}%"></span><span class="pp" style="width:${pw}%"></span></span><b>${p}%</b> of precincts complete <span class="rsub">${fmt(pr)} of ${fmt(tp)} done${pp ? ` · ${fmt(pp)} partly counted` : ''}</span></span>`;
+}
+function expPill(ballots) {
+  const p = expPct(ballots);
+  return `<span class="rep rexp" title="Ballots counted so far as a share of about ${fmt(EXPECTED_STATEWIDE)} expected statewide (an assumption between the 2022 and 2024 totals). This is the kind of figure news sites show as % reporting."><span class="rbar"><span style="width:${p}%"></span></span><b>~${p}%</b> of expected vote counted <span class="rsub">${fmt(ballots)} ballots of ~${(EXPECTED_STATEWIDE / 1e6).toFixed(1)}M · estimate</span></span>`;
 }
 function vtLine(vt, label = 'Counted so far') {
   if (!vt || !(vt[0] + vt[1] + vt[2] + vt[3])) return '';
@@ -464,7 +542,8 @@ async function loadCounties(details) {
     const [raw, st, vt] = await Promise.all([getJSON(`${base}/${v}/json/en/summary.json`), getJSON(`${base}/${v}/json/status.json`).catch(() => null), getJSON(`${base}/${v}/json/vt.json`).catch(() => null)]);
     // precinct status codes: 1 = nothing counted, 2 = partly counted (early/absentee in), 4 = fully counted, 32 = failsafe/provisional (not a precinct)
     const status = st && st.P ? Object.fromEntries(st.P.map((q, i) => [q.trim().toLowerCase(), st.S[i]])) : null;
-    return {name, eid, v, lm: isNaN(lm) ? null : lm, raw, byK: Object.fromEntries(raw.map(c => [c.K, c])), status, types: vt ? vt.Types : null, vtK: vt ? Object.fromEntries(vt.Contests.map(c => [c.K, c.T])) : {}};
+    const ballots = st && st.P ? Object.fromEntries(st.P.map((q, i) => [q.trim().toLowerCase(), [st.B[i] || 0, st.R[i] || 0]])) : null;
+    return {name, eid, v, lm: isNaN(lm) ? null : lm, raw, byK: Object.fromEntries(raw.map(c => [c.K, c])), status, ballots, types: vt ? vt.Types : null, vtK: vt ? Object.fromEntries(vt.Contests.map(c => [c.K, c.T])) : {}, vtV: vt ? Object.fromEntries(vt.Contests.map(c => [c.K, c.Votes])) : {}};
   }));
   const counties = {}; let fail = [];
   res.forEach((r, i) => r.status === 'fulfilled' ? counties[r.value.name] = r.value : fail.push(Object.keys(ids)[i]));
@@ -476,9 +555,9 @@ const normName = s => String(s).toLowerCase().replace(/^(rep|dem|non|unc|grn|lib
 function precStat(co, cn, cid, prec = PREC) {
   const names = prec[cn] && prec[cn][cid];
   if (!co || !co.status || !names) return null;
-  let full = 0, part = 0, real = 0;
-  for (const q of names) { const st = co.status[q]; if (st === 32) continue; real++; if (st === 4) full++; else if (st === 2) part++; }
-  return {full, part, real};
+  let full = 0, part = 0, real = 0, ballots = 0, reg = 0;
+  for (const q of names) { const st = co.status[q]; if (st === 32) continue; real++; if (st === 4) full++; else if (st === 2) part++; const b = co.ballots && co.ballots[q]; if (b) { ballots += b[0]; reg += b[1]; } }
+  return {full, part, real, ballots, reg};
 }
 function vtOf(co, cid) { // votes by type: [Election Day, Early, Absentee by mail, other]
   if (!co || !co.types || !co.vtK || !co.vtK[cid]) return null;
@@ -486,19 +565,24 @@ function vtOf(co, cid) { // votes by type: [Election Day, Early, Absentee by mai
   co.types.forEach((t, i) => { o[/election day/i.test(t) ? 0 : /early/i.test(t) ? 1 : /absentee|mail/i.test(t) ? 2 : 3] += co.vtK[cid][i] || 0; });
   return o;
 }
+const vtSlot = t => /election day/i.test(t) ? 0 : /early/i.test(t) ? 1 : /absentee|mail/i.test(t) ? 2 : 3;
+function vtCand(co, cid, idx) { // per candidate (summary order) votes by type [ED, early, mail, other]
+  if (!co || !co.types || !co.vtV || !co.vtV[cid]) return null;
+  return idx.map(j => { const o = [0, 0, 0, 0]; (co.vtV[cid][j] || []).forEach((x, i) => o[vtSlot(co.types[i])] += x || 0); return o; });
+}
 function mergeCounty(summary, details, C, prec = PREC) {
   const sK = Object.fromEntries(summary.map(c => [c.K, c]));
   const stats = {fromCounty: 0, fromState: 0};
   const det2 = details.map(d => {
     const c = sK[d.K];
     if (!c || !d.Eid || !d.Cid) return d;
-    const n = c.CH.length, V = Array(n).fill(0), PX = [], PY = [], PP = [], Vc = [], VT = [0, 0, 0, 0]; let vtMissing = 0;
+    const n = c.CH.length, V = Array(n).fill(0), PX = [], PY = [], PP = [], Vc = [], VT = [0, 0, 0, 0], BAL = [], REG = [], VTC = [], LM = []; let vtMissing = 0, ballots = 0, reg = 0;
     d.P.forEach((cn, i) => {
       const sv = (d.V[i] || []).slice(0, n); while (sv.length < n) sv.push(0);
-      let v = sv, px = d.PX[i], py = d.PY[i], pp = 0, useCounty = false;
+      let v = sv, px = d.PX[i], py = d.PY[i], pp = 0, useCounty = false, idx = null;
       const co = C[cn], cc = co && co.byK[d.Cid[i]];
       if (cc) {
-        const idx = c.CH.map(name => cc.CH.findIndex(x => normName(x) === normName(name)));
+        idx = c.CH.map(name => cc.CH.findIndex(x => normName(x) === normName(name)));
         if (idx.every(j => j >= 0)) {
           const cv = idx.map(j => cc.V[j] || 0);
           if (cv.reduce((a, b) => a + b, 0) >= sv.reduce((a, b) => a + b, 0)) { v = cv; useCounty = true; }
@@ -506,14 +590,15 @@ function mergeCounty(summary, details, C, prec = PREC) {
       }
       // precincts from each precinct's own status (the county total counts failsafe/provisional, which never complete)
       const ps = useCounty ? precStat(co, cn, d.Cid[i], prec) : null;
-      if (ps) { px = ps.full; py = ps.real; pp = ps.part; }
+      if (ps) { px = ps.full; py = ps.real; pp = ps.part; ballots += ps.ballots; reg += ps.reg; }
+      BAL.push(ps ? ps.ballots : 0); REG.push(ps ? ps.reg : 0); VTC.push(useCounty && idx ? vtCand(co, d.Cid[i], idx) : null); LM.push(co ? co.lm : null);
       const vt = useCounty ? vtOf(co, d.Cid[i]) : null;
       if (vt) vt.forEach((x, k) => VT[k] += x); else vtMissing++;
       stats[useCounty ? 'fromCounty' : 'fromState']++;
       v.forEach((x, k) => V[k] += x); PX.push(px); PY.push(py); PP.push(pp); Vc.push(v);
     });
     sK[d.K] = {...c, V};
-    return {...d, PX, PY, PP, VT: vtMissing === d.P.length ? null : VT, vtPartial: vtMissing > 0 && vtMissing < d.P.length, V: Vc};
+    return {...d, PX, PY, PP, BAL, REG, VTC, LM, ballots, reg, VT: vtMissing === d.P.length ? null : VT, vtPartial: vtMissing > 0 && vtMissing < d.P.length, V: Vc};
   });
   return {summary: summary.map(c => sK[c.K] || c), details: det2, stats};
 }
@@ -644,6 +729,7 @@ function buildExtras(summary, details, chsSum) {
     if (e.state && sK[e.state]) {
       const d = dK[e.state];
       main = summarizeContest(sK[e.state], d ? d.PX.reduce((x, y) => x + y, 0) : sK[e.state].PR, d ? d.PY.reduce((x, y) => x + y, 0) : sK[e.state].TP, d && d.PP ? d.PP.reduce((x, y) => x + y, 0) : 0, d ? d.VT : null);
+      if (main && d) { main.ballots = d.ballots || 0; main.det = d; }
     }
     if (cK[e.chs]) { const co = countyInfo && countyInfo.counties.Charleston, ps = co ? precStat(co, 'Charleston', e.chs) : null;
       county = ps ? summarizeContest(cK[e.chs], ps.full, ps.real, ps.part, vtOf(co, e.chs)) : summarizeContest(cK[e.chs], cK[e.chs].PR, cK[e.chs].TP); if (!main) { main = county; county = null; } }
@@ -743,7 +829,11 @@ function render() {
   renderExtras();
   renderPanel();
   const xs = document.getElementById('xsec-under-map');
-  xs.hidden = view === 'local';
+  xs.hidden = view === 'local' || view === 'senate';
+  document.getElementById('housegrid').hidden = view === 'senate';
+  document.getElementById('logsec').hidden = view === 'senate';
+  document.getElementById('senate').hidden = view !== 'senate';
+  if (view === 'senate') renderSenate();
   document.title = `${unseen ? '● ' : ''}D ${T.Dproj} · R ${T.Rproj} projected | SC House Watch`;
 }
 
@@ -790,7 +880,7 @@ function renderScore(T) {
 
   document.getElementById('score').innerHTML = `
     <div class="headline ${cls}">${head}</div>
-    <div class="repline">${repPill(T.pr, T.tp, T.anyVotes, T.pp)}<span>across the ${T.contested} contested House races · <b>${T.withVotes}</b> of ${T.contested} races have votes · <b>${T.fullIn}</b> fully counted</span></div>
+    <div class="repline">${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main && sen.main.ballots ? expPill(sen.main.ballots) : ''; })()}${repPill(T.pr, T.tp, T.anyVotes, T.pp)}<span>across the ${T.contested} contested House races · <b>${T.withVotes}</b> of ${T.contested} races have votes · <b>${T.fullIn}</b> fully counted</span></div>
     ${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main ? vtLine(sen.main.vt, 'Votes counted statewide so far (U.S. Senate race)') : ''; })()}
     <div class="subline">${sub}</div>
     <div class="seatwrap">
@@ -983,7 +1073,7 @@ function renderExtras() {
              : `<div class="facts"><span>Charleston County numbers unavailable${extraErr ? ' (' + esc(extraErr) + ')' : ''}</span></div>`;
     }
     return `<div class="xcard"><div class="ch"><div><h3>${esc(e.title)}</h3><div class="meta">${esc(e.scope)}</div></div><span class="badge ${bcls}">${badge}</span></div>
-      <div class="repwrap">${repPill(m.pr, m.tp, m.total > 0, m.pp)}${vtLine(m.vt)}</div>
+      <div class="repwrap">${m.ballots ? expPill(m.ballots) + ' ' : ''}${repPill(m.pr, m.tp, m.total > 0, m.pp)}${vtLine(m.vt)}</div>
       <div class="row">${rows}</div>
       <div class="facts"><span>Votes counted <b>${fmt(m.total)}</b></span></div>
       <div class="note">${note}</div>${cl}</div>`;
@@ -1119,9 +1209,106 @@ function tableHTML() {
     <tbody>${rows || '<tr><td colspan="10" class="meta">No races match these choices.</td></tr>'}</tbody></table></div>`;
 }
 
+// ---------------- U.S. Senate breakout ----------------
+let senSort = 'margin', senDir = -1;
+const senData = () => { const e = extras && extras.find(x => x.id === 'ussen'); return e && e.main && e.main.det ? e : null; };
+function marginColor(m, hasVotes) {
+  if (!hasVotes) return '#EEF2F6';
+  const t = Math.min(1, Math.abs(m) / 0.4);
+  const mix = (a, b) => Math.round(a + (b - a) * t);
+  return m >= 0 ? `rgb(${mix(219, 30)},${mix(234, 64)},${mix(254, 175)})` : `rgb(${mix(254, 153)},${mix(226, 27)},${mix(226, 27)})`;
+}
+function renderSenate() {
+  try { renderSenateInner(); } catch (err) { console.error(err); document.getElementById('senate').innerHTML = `<div class="scard">Senate breakout could not render: ${esc(err.message)}</div>`; }
+}
+function renderSenateInner() {
+  const el = document.getElementById('senate'), e = senData();
+  if (!e) { el.innerHTML = '<div class="scard">Senate county data is not loaded yet.</div>'; return; }
+  const m = e.main, d = m.det, c = extras && 0; const sum = Object.fromEntries([]);
+  const CH = m.cands.map(x => x.name), P = m.cands.map(x => x.party);
+  const di = P.indexOf('DEM'), ri = P.indexOf('REP');
+  const D = m.cands[di], Rr = m.cands[ri];
+  const gov = extras.find(x => x.id === 'gov'); const gd = gov && gov.main && gov.main.det;
+  const gdi = gov && gov.main ? gov.main.cands.findIndex(x => x.party === 'DEM') : -1, gri = gov && gov.main ? gov.main.cands.findIndex(x => x.party === 'REP') : -1;
+  // per-county rows
+  const rows = d.P.map((cn, i) => {
+    const v = d.V[i] || [], tot = v.reduce((a, b) => a + b, 0), dv = v[di] || 0, rv = v[ri] || 0;
+    const vt = d.VTC[i], ed = vt ? vt.reduce((a, x) => a + x[0], 0) : null;
+    let gm = null;
+    if (gd) { const gi = gd.P.indexOf(cn); if (gi >= 0) { const gv = gd.V[gi] || [], gt = gv.reduce((a, b) => a + b, 0); if (gt) gm = ((gv[gdi] || 0) - (gv[gri] || 0)) / gt; } }
+    return {cn, tot, dv, rv, margin: tot ? (dv - rv) / tot : 0, px: d.PX[i], pp: d.PP[i], py: d.PY[i], ballots: d.BAL[i], reg: d.REG[i], ed, lm: d.LM[i], gm,
+            edm: vt && vt[di] && vt[ri] && (vt[di][0] + vt[ri][0]) ? (vt[di][0] - vt[ri][0]) / (vt[di][0] + vt[ri][0]) : null,
+            evm: vt && vt[di] && vt[ri] && (vt[di][1] + vt[ri][1]) ? (vt[di][1] - vt[ri][1]) / (vt[di][1] + vt[ri][1]) : null};
+  });
+  // statewide by vote type, per candidate
+  const sv = [0, 0, 0, 0], svD = [0, 0, 0, 0], svR = [0, 0, 0, 0];
+  d.VTC.forEach(vt => { if (!vt) return; vt.forEach((a, k) => a.forEach((x, t) => { sv[t] += x; if (k === di) svD[t] += x; if (k === ri) svR[t] += x; })); });
+  const share = (a, b) => (a + b) ? (a - b) / (a + b) : null;
+  const lead = m.margin, leader = m.leader, second = m.second;
+  const govM = gov && gov.main && gov.main.total ? ((gov.main.cands[gdi] ? gov.main.cands[gdi].votes : 0) - (gov.main.cands[gri] ? gov.main.cands[gri].votes : 0)) / gov.main.total : null;
+  const senM = m.total ? (D.votes - Rr.votes) / m.total : 0;
+  const reporting = rows.filter(r => r.tot > 0), silent = rows.filter(r => !r.tot);
+  const bigSilent = ['Greenville', 'Richland', 'Charleston', 'Horry', 'Lexington', 'Spartanburg', 'York', 'Berkeley', 'Beaufort', 'Anderson', 'Dorchester', 'Aiken'].filter(n => { const r = rows.find(x => x.cn === n); return r && (!r.tot || (!r.px && !r.ed)); });
+  const full = rows.filter(r => r.py && r.px >= r.py).length;
+  const bullets = [];
+  if (!m.total) bullets.push('No votes counted yet.');
+  else {
+    bullets.push(`<b>${esc(leader.name)}</b> leads by <b>${fmt(leader.votes - second.votes)}</b> votes (${(lead * 100).toFixed(1)} pts), with about <b>${expPct(m.ballots)}%</b> of the expected statewide vote counted and <b>${repPct(m.pr, m.tp)}%</b> of precincts complete (${fmt(m.pr)} of ${fmt(m.tp)}; ${fmt(m.pp)} more partly counted).`);
+    const edS = share(svD[0], svR[0]), evS = share(svD[1], svR[1]), mlS = share(svD[2], svR[2]);
+    if (evS !== null) bullets.push(`Among <b>early votes</b> counted so far (${fmt(sv[1])}): ${evS >= 0 ? 'Andrews' : 'Graham'} ${pts(evS).replace(/^[DR]\+/, '+')} pts${mlS !== null ? ` · <b>mail ballots</b> (${fmt(sv[2])}): ${mlS >= 0 ? 'Andrews' : 'Graham'} +${Math.abs(mlS * 100).toFixed(1)}` : ''}${edS !== null ? ` · <b>Election Day votes</b> (${fmt(sv[0])}): ${edS >= 0 ? 'Andrews' : 'Graham'} +${Math.abs(edS * 100).toFixed(1)}` : ' · <b>no Election Day votes counted yet</b>'}. ${sv[0] < sv[1] * 0.2 ? 'Election Day ballots are usually the Republican-leaning share of the vote, so expect the margin to tighten as they come in.' : ''}`);
+    if (govM !== null) bullets.push(`Compared with the <b>Governor race on the same ballots</b>: Andrews is running ${Math.abs((senM - govM) * 100).toFixed(1)} pts ${senM >= govM ? 'ahead of' : 'behind'} Jermaine Johnson (D). ${Math.abs(senM - govM) >= 0.02 ? 'That gap is ticket-splitting, not turnout.' : 'The two Democrats are running about even.'}`);
+    bullets.push(`<b>${reporting.length} of 46 counties</b> have votes in; <b>${full}</b> are fully counted; <b>${silent.length}</b> have nothing yet${silent.length ? ` (${silent.slice(0, 8).map(r => r.cn).join(', ')}${silent.length > 8 ? '…' : ''})` : ''}.`);
+    if (bigSilent.length) bullets.push(`Large counties with little or no Election Day count yet, where the race will move most: <b>${bigSilent.join(', ')}</b>.`);
+    const dBest = [...reporting].sort((a, b) => b.margin - a.margin).slice(0, 3), rBest = [...reporting].sort((a, b) => a.margin - b.margin).slice(0, 3);
+    bullets.push(`Strongest counties so far: Andrews ${dBest.map(r => `${r.cn} (${pts(r.margin)})`).join(', ')} · Graham ${rBest.map(r => `${r.cn} (${pts(r.margin)})`).join(', ')}.`);
+  }
+  // sort table
+  const key = {county: r => r.cn, margin: r => r.tot ? r.margin : -9, votes: r => r.tot, complete: r => r.py ? r.px / r.py : -1, ed: r => r.ed || 0, gov: r => r.gm === null || !r.tot ? -9 : r.margin - r.gm, lm: r => r.lm || 0}[senSort] || (r => r.cn);
+  const sorted = [...rows].sort((a, b) => { const x = key(a), y = key(b); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * senDir || a.cn.localeCompare(b.cn); });
+  const th = (k, l, cls = '', title = '') => `<th class="${cls}" data-ssort="${k}"${title ? ` title="${title}"` : ''}>${l}${senSort === k ? (senDir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const cand = (x, cls) => `<div class="nm"><b style="color:var(--${cls})">${plabel(x.party)}</b> ${esc(x.name)}</div><div class="pc" style="color:var(--${cls})">${m.total ? pct(x.votes / m.total) : '–'}</div><div class="vt">${fmt(x.votes)}</div>`;
+  const others = m.cands.filter((x, i) => i !== di && i !== ri && !/^write-in$/i.test(x.name));
+  el.innerHTML = `
+  <div class="scard"><div class="top">
+    <div><h2>U.S. Senate: Annie Andrews (D) vs Darline Graham (R)</h2>
+      <div class="repwrap">${m.ballots ? expPill(m.ballots) : ''} ${repPill(m.pr, m.tp, m.total > 0, m.pp)}</div>
+      <div class="row">${cand(D, 'dem')}${cand(Rr, 'rep')}${others.map(x => `<div class="nm"><b style="color:var(--brand)">${plabel(x.party)}</b> ${esc(x.name)}</div><div class="pc" style="color:var(--brand)">${m.total ? pct(x.votes / m.total) : '–'}</div><div class="vt">${fmt(x.votes)}</div>`).join('')}
+        ${m.total ? `<div class="bar"><span style="width:${D.votes / m.total * 100}%;background:var(--dem-lean)"></span><span style="width:${(m.total - D.votes - Rr.votes) / m.total * 100}%;background:#CBD5E1"></span><span style="width:${Rr.votes / m.total * 100}%;background:var(--rep-lean)"></span></div>` : ''}</div>
+      <div class="facts" style="margin-top:10px"><span>Margin <b>${m.total ? pts(senM) : '–'}</b></span><span>Votes counted <b>${fmt(m.total)}</b></span>${govM !== null ? `<span>Governor race, same ballots <b>${pts(govM)}</b></span>` : ''}</div>
+      ${vtLine(m.vt, 'Votes counted by type')}
+      <div class="an"><h3 style="font-size:14px;margin-top:12px">Race analysis</h3><ul>${bullets.map(b => `<li>${b}</li>`).join('')}</ul></div>
+    </div>
+    <div><h3 style="font-size:14px">County map: margin so far</h3>
+      <div class="mapview">${document.getElementById('countysvg').innerHTML}</div>
+      <div class="mlegend"><span><i style="background:${marginColor(0.4, 1)}"></i>Andrews +40</span><span><i style="background:${marginColor(0.1, 1)}"></i>Andrews +10</span><span><i style="background:${marginColor(-0.1, 1)}"></i>Graham +10</span><span><i style="background:${marginColor(-0.4, 1)}"></i>Graham +40</span><span><i style="background:#EEF2F6"></i>No votes yet</span></div>
+      <div class="meta" style="margin-top:6px">Hover a county for its numbers. Colours show the margin among votes counted so far, not a projection.</div>
+    </div>
+  </div></div>
+  <div class="scard"><h2>County by county</h2><div class="meta" style="margin-bottom:8px">Click a column to sort. "vs Gov" = Andrews' margin minus Johnson's (D, Governor) margin in the same county: positive means Andrews is running ahead of the top of the ticket there.</div>
+  <div class="ctwrap"><table class="ctable"><thead><tr>${th('county', 'County')}${th('votes', 'Votes', 'num')}<th class="num">Andrews</th><th class="num">Graham</th>${th('margin', 'Margin', 'num')}${th('complete', 'Precincts complete', '', 'complete / partly counted / total')}${th('ed', 'Election Day votes', 'num', 'Election Day ballots counted so far (the rest are early and mail)')}<th class="num" title="Ballots counted so far in this county's precincts">Ballots</th>${th('gov', 'vs Gov', 'num')}${th('lm', 'Last posted')}</tr></thead>
+  <tbody>${sorted.map(r => `<tr data-county="${esc(r.cn)}"><td><b>${esc(r.cn)}</b></td><td class="num">${fmt(r.tot)}</td>
+    <td class="num" style="color:var(--dem)">${r.tot ? pct(r.dv / r.tot) : '–'} <span class="meta">${fmt(r.dv)}</span></td><td class="num" style="color:var(--rep)">${r.tot ? pct(r.rv / r.tot) : '–'} <span class="meta">${fmt(r.rv)}</span></td>
+    <td class="num"><b style="color:${r.tot ? (r.margin >= 0 ? 'var(--dem)' : 'var(--rep)') : 'inherit'}">${r.tot ? pts(r.margin) : '–'}</b></td>
+    <td><span class="pbar${r.py && r.px >= r.py ? ' full' : ''}"><span style="width:${repPct(r.px, r.py)}%"></span><span class="pp" style="width:${r.py ? Math.min(100 - repPct(r.px, r.py), r.pp / r.py * 100) : 0}%"></span></span><b>${repPct(r.px, r.py)}%</b> <span class="meta">${r.px} / ${r.pp} / ${r.py}</span></td>
+    <td class="num">${r.ed === null ? '–' : r.ed ? fmt(r.ed) : '<span style="color:var(--toss)">none yet</span>'}</td>
+    <td class="num">${r.ballots ? fmt(r.ballots) : '–'}</td>
+    <td class="num" style="color:${r.gm === null || !r.tot ? 'inherit' : r.margin - r.gm >= 0 ? 'var(--dem)' : 'var(--rep)'}">${r.gm === null || !r.tot ? '–' : (r.margin - r.gm >= 0 ? '+' : '−') + Math.abs((r.margin - r.gm) * 100).toFixed(1)}</td>
+    <td class="meta">${r.lm ? tm(r.lm) : '–'}</td></tr>`).join('')}</tbody></table></div></div>`;
+  // colour the county map
+  for (const r of rows) {
+    const p = el.querySelector(`#county-${r.cn.replace(/ /g, '_')}`); if (!p) continue;
+    p.style.fill = marginColor(r.margin, r.tot > 0);
+    const t = p.querySelector('title'); if (t) t.textContent = `${r.cn}\n${r.tot ? `Andrews ${pct(r.dv / r.tot)} · Graham ${pct(r.rv / r.tot)} · ${pts(r.margin)}\n${fmt(r.tot)} votes · ${repPct(r.px, r.py)}% of precincts complete (${r.px} of ${r.py}), ${r.pp} partly counted${r.ed === null ? '' : ` · Election Day votes ${fmt(r.ed)}`}` : 'No votes yet'}`;
+  }
+}
+document.addEventListener('click', ev => {
+  const h = ev.target.closest('th[data-ssort]'); if (h) { const k = h.dataset.ssort; if (senSort === k) senDir = -senDir; else { senSort = k; senDir = k === 'county' ? 1 : -1; } renderSenate(); }
+  const cp = ev.target.closest('.cmap path[data-county]'); if (cp) { const row = document.querySelector(`.ctable tr[data-county="${cp.dataset.county}"]`); if (row) { row.scrollIntoView({behavior: 'smooth', block: 'center'}); row.style.background = '#EEF2FF'; setTimeout(() => row.style.background = '', 1500); } }
+});
+
 // ---------------- interaction ----------------
 function setView(v) {
-  view = v; selected = null;
+  view = v; selected = null; if (v !== 'senate') senSort = senSort || 'margin';
   try { localStorage.setItem('scwatch-view', v); } catch (e) {}
   history.replaceState(null, '', '#' + v);
   zoomTo(v === 'local' ? 'chs' : 'state');
