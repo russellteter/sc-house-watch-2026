@@ -90,6 +90,7 @@ button.on{background:var(--head);color:#fff;border-color:var(--head)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .toolbar{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .toolbar button{padding:4px 10px;font-size:13px}
+.toolbar select{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text)}
 .panelhead{font-size:16px;margin-bottom:8px}
 .minitally{font-size:13px;color:var(--muted);margin-bottom:10px}
 .minitally b{color:var(--text)}
@@ -170,7 +171,7 @@ footer a{color:var(--brand)}
 
 <nav class="tabs" id="tabs">
   <button data-view="all">Whole House <span class="tag">124 seats</span></button>
-  <button data-view="targets">Our targets <span class="tag">14 flips + HD 115</span></button>
+  <button data-view="targets">Key Flip Targets <span class="tag">14 + HD 115 to defend</span></button>
   <button data-view="local">Charleston starred <span class="tag">7 races</span></button>
 </nav>
 
@@ -198,6 +199,7 @@ footer a{color:var(--brand)}
         <span><i style="background:#93C5FD"></i>Dem, no opponent</span>
         <span><i style="background:#3B82F6"></i>Dem leading</span>
         <span><i style="background:#FBBF24"></i>Within 3 pts</span>
+        <span><i style="background:#F59E0B"></i>Recount range</span>
         <span><i style="background:#DC2626"></i>Rep leading</span>
         <span><i style="background:#991B1B"></i>Rep won</span>
         <span><i style="background:#E2E8F0"></i>No votes yet</span>
@@ -226,6 +228,8 @@ const CHS = 'https://www.enr-scvotes.org/SC/Charleston/127310';
 const FAST_UNTIL = Date.parse('2026-11-04T01:33:00Z');
 const refreshMs = () => (Date.now() < FAST_UNTIL ? 5 : 10) * 60 * 1000;
 const HOUSE = /*HOUSE*/[];
+// Area label = sheet region + the counties the state lists for the race (the sheet mislabels HD 28, 39 and 44)
+HOUSE.forEach(h => { h.region = `${h.region.split('/')[0].trim()} / ${h.counties.join(', ')}`; });
 const SEATS = 124, MAJ = 63, SUPER = 83, D_BREAK = SEATS - SUPER + 1; // 42
 const HELD_D = HOUSE.filter(h => h.incParty === 'D').length, HELD_R = SEATS - HELD_D;
 const TARGET_HDS = [12, 24, 57, 60, 64, 67, 89, 92, 98, 102, 110, 112, 116, 122, 115];
@@ -253,8 +257,10 @@ const STATUS = {
   urep:{label:'Rep, no opponent', color:'#FCA5A5'},
   olead:{label:'Other party leading', color:'#A78BFA'},
   oth:{label:'Other party wins', color:'#7C3AED'},
+  recount:{label:'Recount range (1 pt or less)', color:'#F59E0B'},
   wait:{label:'No votes yet', color:'#E2E8F0'},
 };
+const RECOUNT = 0.01;
 const FINAL = ['flip', 'dhold', 'hold', 'rflip', 'udem', 'urep', 'oth'];
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo');
@@ -328,7 +334,7 @@ function buildRaces(summary, details) {
 
 function evalRace(h, c, d) {
   const base = {...h, target: TARGET_HDS.includes(h.hd), defend: h.incParty === 'D' && TARGET_HDS.includes(h.hd)};
-  if (!c) return {...base, missing:true, status:'wait', total:0, pr:0, tp:0, margin:0, cands:[], real:[], counties:[]};
+  if (!c) return {...base, missing:true, status:'wait', total:0, pr:0, tp:0, margin:0, cands:[], real:[], byCounty:[]};
   const cands = c.CH.map((n, i) => ({name: cleanName(n), party: c.P[i], votes: c.V[i] || 0, won: !!(c.W && c.W[i] === 1), wi: /^write-?in$/i.test(n.trim())}));
   const real = cands.filter(x => !x.wi);
   const ranked = [...real].sort((a, b) => b.votes - a.votes);
@@ -337,7 +343,7 @@ function evalRace(h, c, d) {
   const total = cands.reduce((s, x) => s + x.votes, 0);
   const pr = d ? d.PX.reduce((a, b) => a + b, 0) : (c.PR || 0);
   const tp = d ? d.PY.reduce((a, b) => a + b, 0) : (c.TP || 0);
-  const counties = d ? d.P.map((name, i) => ({name, px: d.PX[i], py: d.PY[i], v: d.V[i] || []})) : [];
+  const byCounty = d ? d.P.map((name, i) => ({name, px: d.PX[i], py: d.PY[i], v: d.V[i] || []})) : [];
   const unopposed = real.length === 1;
   let margin = 0; // + means the Democrat is ahead of the main opponent
   if (total) {
@@ -351,11 +357,14 @@ function evalRace(h, c, d) {
   let winner = null;
   if (unopposed) winner = real[0].party;
   else if (called) winner = called.party;
-  else if (total && allIn) winner = leader.party;
+  // SC orders an automatic recount when the top two are within 1% of all votes cast for the office: not "won" yet
+  const recount = total && allIn && ranked.length > 1 && (ranked[0].votes - ranked[1].votes) / total <= RECOUNT;
+  if (!winner && !unopposed && !called && total && allIn && !recount) winner = leader.party;
   let status;
   if (unopposed) status = P1(winner) === 'D' ? 'udem' : P1(winner) === 'R' ? 'urep' : 'oth';
   else if (winner) { const w = P1(winner); status = w === 'D' ? (h.incParty === 'D' ? 'dhold' : 'flip') : w === 'R' ? (h.incParty === 'R' ? 'hold' : 'rflip') : 'oth'; }
   else if (!total) status = 'wait';
+  else if (recount) status = 'recount';
   else if (Math.abs(margin) < 0.03) status = 'toss';
   else status = P1(leader.party) === 'D' ? 'dlead' : P1(leader.party) === 'R' ? 'rlead' : 'olead';
   const side = winner ? P1(winner) : total ? P1(leader.party) : null;
@@ -366,11 +375,11 @@ function evalRace(h, c, d) {
     if (remaining > 0) needs = 0.5 + (opp.votes - dem.votes) / (2 * remaining);
   }
   return {...base, contest: c.C, cands, real, dem, opp, total, pr, tp, share, margin, allIn, status, side,
-    final: !!winner, unopposed, needs, remaining, counties, called: !!called};
+    final: !!winner, unopposed, needs, remaining, byCounty, called: !!called};
 }
 
 function tally(list) {
-  const T = {Dwon:0, Rwon:0, Owon:0, Dlead:0, Rlead:0, Olead:0, toss:0, wait:0, waitD:0, waitR:0, udem:0, urep:0,
+  const T = {Dwon:0, Rwon:0, Owon:0, Dlead:0, Rlead:0, Olead:0, toss:0, recount:0, wait:0, waitD:0, waitR:0, udem:0, urep:0,
              dGain:[], rGain:[], pr:0, tp:0, contested:0, anyVotes:false, decided:0};
   for (const r of list) {
     if (!r.unopposed) { T.pr += r.pr; T.tp += r.tp; T.contested++; }
@@ -379,7 +388,7 @@ function tally(list) {
     if (r.status === 'urep') T.urep++;
     if (r.final) { T.decided++; T[r.side + 'won']++; }
     else if (r.status === 'wait') { T.wait++; T['wait' + r.incParty]++; continue; }
-    else { if (r.status === 'toss') T.toss++; T[r.side + 'lead']++; }
+    else { if (r.status === 'toss' || r.status === 'recount') T.toss++; if (r.status === 'recount') T.recount++; T[r.side + 'lead']++; }
     if (r.side === 'D' && r.incParty === 'R') T.dGain.push(r);
     if (r.side === 'R' && r.incParty === 'D') T.rGain.push(r);
   }
@@ -489,6 +498,7 @@ function render() {
   if (!races) return;
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
   const T = tally(races);
+  document.body.dataset.tally = JSON.stringify({v: version, Dwon: T.Dwon, Rwon: T.Rwon, Owon: T.Owon, Dlead: T.Dlead, Rlead: T.Rlead, Olead: T.Olead, wait: T.wait, waitD: T.waitD, waitR: T.waitR, Dproj: T.Dproj, Rproj: T.Rproj, recount: T.recount, dGain: T.dGain.map(r => r.hd), rGain: T.rGain.map(r => r.hd), verdict: verdict(T).state});
   renderScore(T);
   renderEvents();
   renderMap();
@@ -499,18 +509,25 @@ function render() {
   document.title = `${unseen ? '● ' : ''}D ${T.Dproj} · R ${T.Rproj} projected | SC House Watch`;
 }
 
+// The supermajority is about Republican seats: it breaks when Republicans end below 83,
+// which equals Democrats reaching 42 only if no third-party candidate wins a seat.
+function verdict(T) {
+  const short = T.Rproj - (SUPER - 1); // projected Republican seats above 82 = seats they still need to lose
+  if (T.Rwon >= SUPER) return {state:'rclinch', cls:'bad', head:`Republicans have clinched the supermajority: ${T.Rwon} seats won, ${SUPER} needed.`};
+  if (T.Rmax < SUPER) return {state:'broken', cls:'good', head:`The supermajority is broken: Republicans can now win at most ${T.Rmax} seats, below the ${SUPER} they need.`};
+  if (!T.anyVotes) return {state:'none', cls:'', head:`No votes counted yet. Republicans hold ${HELD_R} seats today; Democrats need ${D_BREAK} seats, a net gain of ${D_BREAK - HELD_D}, to break the supermajority.`};
+  if (T.Rproj >= SUPER) return {state:'rkeep', cls:'bad', head:`Republicans on track to keep the supermajority: ${T.Rproj} seats projected, ${SUPER} needed. They would have to lose ${short} more seat${short === 1 ? '' : 's'} for it to break.`};
+  return {state:'dbreak', cls:'good', head:`Democrats on track to break the supermajority: Republicans projected at ${T.Rproj}, below the ${SUPER} they need.`};
+}
+
 function renderScore(T) {
-  let head, cls = '';
-  const needD = Math.max(0, D_BREAK - T.Dproj);
-  if (T.Rwon >= SUPER) { head = `Republicans have clinched the supermajority: ${T.Rwon} seats won, ${SUPER} needed.`; cls = 'bad'; }
-  else if (T.Dwon >= D_BREAK) { head = `Democrats have broken the supermajority: ${T.Dwon} seats won; ${D_BREAK} was the bar.`; cls = 'good'; }
-  else if (!T.anyVotes) head = `No votes counted yet. Republicans hold ${HELD_R} seats today; Democrats need ${D_BREAK} seats, a net gain of ${D_BREAK - HELD_D}, to break the supermajority.`;
-  else if (T.Rproj >= SUPER) { head = `Republicans on track to keep the supermajority: ${T.Rproj} seats projected, ${SUPER} needed. Democrats are ${needD} seat${needD === 1 ? '' : 's'} short.`; cls = 'bad'; }
-  else { head = `Democrats on track to break the supermajority: Republicans projected at ${T.Rproj}, below the ${SUPER} they need.`; cls = 'good'; }
+  const {head, cls} = verdict(T);
+  const short = Math.max(0, T.Rproj - (SUPER - 1));
   const sub = `Projected: Democrats ${T.Dproj}, Republicans ${T.Rproj}${T.Owon + T.Olead ? `, other ${T.Owon + T.Olead}` : ''} · seats decided ${T.decided} of ${SEATS} (incl. ${T.udem + T.urep} with no opponent) · precincts counted in the ${T.contested} contested races: ${T.tp ? pct(T.pr / T.tp, 0) : '0%'} (${fmt(T.pr)} of ${fmt(T.tp)})`;
 
   // seat bar, Democrats from the left, Republicans from the right
-  const tossD = races.filter(r => r.status === 'toss' && r.side === 'D').length, tossR = races.filter(r => r.status === 'toss' && r.side === 'R').length;
+  const close = r => r.status === 'toss' || r.status === 'recount';
+  const tossD = races.filter(r => close(r) && r.side === 'D').length, tossR = races.filter(r => close(r) && r.side === 'R').length;
   const segs = [
     [T.Dwon, '#1E40AF', 'Dem won (incl. no opponent)'], [T.Dlead - tossD, '#3B82F6', 'Dem leading'], [tossD, '#93C5FD', 'Dem ahead by <3 pts'],
     [T.waitD, '#DBEAFE', 'No votes yet, Dem-held'], [T.waitR, '#FEE2E2', 'No votes yet, Rep-held'],
@@ -530,8 +547,8 @@ function renderScore(T) {
   const live = races.filter(r => !r.final && r.total && r.dem && r.opp);
   const repLeads = live.filter(r => r.side === 'R').sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin));
   const demLeads = live.filter(r => r.side === 'D').sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin));
-  const tipItem = r => `<li data-hd="${r.hd}"><b>HD ${r.hd}</b> ${pts(r.margin)} · ${pct(r.share, 0)} counted · ${esc(r.region)}${r.target ? ' · <b>target</b>' : ''}</li>`;
-  const needLine = T.Dproj >= D_BREAK ? `Democrats are at or above ${D_BREAK} on current projection. Next closest Republican leads:` :`Democrats need ${needD} more seat${needD === 1 ? '' : 's'}. Closest Republican leads:`;
+  const tipItem = r => `<li data-hd="${r.hd}"><b>HD ${r.hd}</b> ${pts(r.margin)} · ${pct(r.share, 0)} counted · ${esc(r.region)}${r.target ? ` · <b>${r.incParty === 'D' ? 'defend' : 'Key Flip Target'}</b>` : ''}</li>`;
+  const needLine = T.Rproj < SUPER ? `Republicans are below ${SUPER} on current projection. Next closest Republican leads:` : `Republicans must lose ${short} more seat${short === 1 ? '' : 's'} for the supermajority to break. Closest Republican leads:`;
 
   document.getElementById('score').innerHTML = `
     <div class="headline ${cls}">${head}</div>
@@ -578,9 +595,9 @@ function renderScore(T) {
 function renderEvents() {
   const all = events();
   let ev, sub;
-  if (view === 'targets') { ev = all.filter(e => e.extra || TARGET_HDS.includes(e.hd)); sub = 'our 15 target districts and starred races'; }
+  if (view === 'targets') { ev = all.filter(e => e.extra || TARGET_HDS.includes(e.hd)); sub = 'the 14 Key Flip Targets, HD 115 and the starred races'; }
   else if (view === 'local') { ev = all.filter(e => e.extra || LOCAL_HDS.includes(e.hd)); sub = 'Charleston starred races'; }
-  else { ev = all.filter(e => e.sig || TARGET_HDS.includes(e.hd)); sub = 'lead changes and finished races across the House, plus every update in our targets'; }
+  else { ev = all.filter(e => e.sig || TARGET_HDS.includes(e.hd)); sub = 'lead changes and finished races across the House, plus every update in the Key Flip Targets'; }
   document.getElementById('logsub').textContent = `newest first · ${sub} · click a district to jump to it`;
   document.getElementById('events').innerHTML = ev.length
     ? ev.slice(0, 100).map(e => `<li class="${e.kind}"${e.hd ? ` data-hd="${e.hd}"` : ''}><time>${tm(e.t)}</time><b>${esc(e.lab)}</b><span>${esc(e.txt)}</span></li>`).join('')
@@ -699,7 +716,7 @@ function card(r) {
   const other = r.total - (r.dem ? r.dem.votes : 0) - (r.opp ? r.opp.votes : 0);
   const bar = r.total ? `<div class="bar"><span style="width:${(r.dem ? r.dem.votes : 0) / tw * 100}%;background:var(--dem-lean)"></span><span style="width:${other / tw * 100}%;background:#CBD5E1"></span><span style="width:${(r.opp ? r.opp.votes : 0) / tw * 100}%;background:var(--rep-lean)"></span></div>` : '';
   const di = r.cands.indexOf(r.dem), oi = r.cands.indexOf(r.opp);
-  const ctable = r.counties.length ? `<details><summary>By county (${r.counties.length})</summary><table><tr><th>County</th><th>Precincts</th><th>Dem</th><th>${r.opp ? plabel(r.opp.party) : 'Opp'}</th></tr>${r.counties.map(c => `<tr><td>${esc(c.name)}</td><td>${c.px} / ${c.py}</td><td>${fmt(c.v[di] || 0)}</td><td>${fmt(c.v[oi] || 0)}</td></tr>`).join('')}</table></details>` : '';
+  const ctable = r.byCounty.length ? `<details><summary>By county (${r.byCounty.length})</summary><table><tr><th>County</th><th>Precincts</th><th>Dem</th><th>${r.opp ? plabel(r.opp.party) : 'Opp'}</th></tr>${r.byCounty.map(c => `<tr><td>${esc(c.name)}</td><td>${c.px} / ${c.py}</td><td>${fmt(c.v[di] || 0)}</td><td>${fmt(c.v[oi] || 0)}</td></tr>`).join('')}</table></details>` : '';
   const trend = lc || sp ? `<div class="trend">${sp}<span>${lc ? describeChange(lc) : ''}</span></div>` : '';
   const meta = r.hd === 115 ? `Open seat, Dem-held (was ${esc(r.inc)}) · defend` : `Incumbent ${esc(r.inc)} (${r.incParty})${r.incParty === 'D' ? ' · defend' : ''}`;
   return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}${fresh ? ' fresh' : ''}" id="card-${r.hd}">
@@ -717,51 +734,91 @@ function renderPanel() {
   const el = document.getElementById('panel');
   if (view === 'all') { el.innerHTML = tableHTML(); return; }
   const set = view === 'targets' ? TARGET_HDS : LOCAL_HDS;
-  let list = races.filter(r => set.includes(r.hd));
-  const m = x => x.total ? x.margin : -9;
-  if (targetSort === 'margin') list.sort((a, b) => m(b) - m(a));
-  else if (targetSort === 'close') list.sort((a, b) => (a.total ? Math.abs(a.margin) : 9) - (b.total ? Math.abs(b.margin) : 9));
-  else if (targetSort === 'baseline') list.sort((a, b) => b.base - a.base);
-  else list.sort((a, b) => a.hd - b.hd);
-  list = [...list.filter(x => PINNED.includes(x.hd)), ...list.filter(x => !PINNED.includes(x.hd))];
-  const c = k => list.filter(r => r.status === k).length;
+  let list = races.filter(r => set.includes(r.hd)).sort(cmp(targetSort, SORTS[targetSort].dir));
+  if (targetSort === 'hd') list = [...list.filter(x => PINNED.includes(x.hd)), ...list.filter(x => !PINNED.includes(x.hd))];
+  const flipT = list.filter(r => r.incParty === 'R'), c = k => flipT.filter(r => r.status === k).length;
   const mini = view === 'targets'
-    ? `<div class="minitally">Of our 14 flip targets: <b>${c('flip')}</b> flipped · <b>${list.filter(r => r.incParty === 'R' && r.status === 'dlead').length}</b> Dem leading · <b>${list.filter(r => r.incParty === 'R' && r.status === 'toss').length}</b> within 3 pts · <b>${c('rlead')}</b> Rep leading · <b>${c('hold')}</b> Rep held · HD 115 (defend): <b>${STATUS[races.find(r => r.hd === 115).status].label}</b></div>` : '';
-  el.innerHTML = `<h2 class="panelhead">${view === 'targets' ? 'Our target districts' : 'Charleston starred races'}</h2>${mini}
-    <div class="toolbar">Sort: ${[['hd', 'District'], ['margin', 'Best for Dem'], ['close', 'Closest'], ['baseline', 'Baseline']].map(([k, l]) => `<button data-tsort="${k}" class="${targetSort === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ? `<div class="minitally">Of the ${flipT.length} Key Flip Targets: <b>${c('flip')}</b> flipped · <b>${c('dlead')}</b> Dem leading · <b>${c('toss') + c('recount')}</b> within 3 pts · <b>${c('rlead')}</b> Rep leading · <b>${c('hold')}</b> Rep held · HD 115 (defend): <b>${STATUS[races.find(r => r.hd === 115).status].label}</b></div>` : '';
+  el.innerHTML = `<h2 class="panelhead">${view === 'targets' ? 'Key Flip Targets' : 'Charleston starred races'}</h2>${mini}
+    <div class="toolbar">Sort: ${['hd', 'margin', 'close', 'swing', 'counted', 'updated', 'base'].map(k => `<button data-tsort="${k}" class="${targetSort === k ? 'on' : ''}">${SORTS[k].label}</button>`).join('')}${targetSort === 'hd' ? '<span class="meta">HD 110 pinned first</span>' : ''}</div>
     <div class="cards">${list.map(card).join('')}</div>
     ${view === 'local' ? `<h2 class="panelhead" style="margin-top:18px">Other Charleston starred races</h2><div class="xgrid">${renderExtras()}</div>` : ''}`;
 }
 
+// ---- sorting & filtering (every column sorts; choices are remembered in this browser) ----
+const SORTS = {
+  hd:      {label:'District', key:r => r.hd, dir:1},
+  area:    {label:'Area', key:r => r.region, dir:1},
+  dem:     {label:'Democrat', key:r => r.dem ? r.dem.name : '~', dir:1},
+  opp:     {label:'Opponent', key:r => r.opp ? r.opp.name : '~', dir:1},
+  dpct:    {label:'Dem %', key:r => r.total && r.dem && !r.unopposed ? r.dem.votes / r.total : -1, dir:-1},
+  opct:    {label:'Opp %', key:r => r.total && r.opp && !r.unopposed ? r.opp.votes / r.total : -1, dir:-1},
+  margin:  {label:'Best for Dem', key:r => r.unopposed ? (r.real[0].party === 'DEM' ? 2 : -2) : r.total ? r.margin : -9, dir:-1},
+  close:   {label:'Closest', key:r => r.total && !r.unopposed ? Math.abs(r.margin) : 9, dir:1},
+  swing:   {label:'Dem vs baseline', key:r => r.total && !r.unopposed ? r.margin - r.base : -9, dir:-1},
+  base:    {label:'Baseline', key:r => r.base, dir:-1},
+  counted: {label:'Most counted', key:r => r.unopposed ? -1 : r.share, dir:-1},
+  votes:   {label:'Votes counted', key:r => r.unopposed ? -1 : r.total, dir:-1},
+  status:  {label:'Status', key:r => Object.keys(STATUS).indexOf(r.status), dir:1},
+  held:    {label:'Held by', key:r => r.incParty, dir:1},
+  updated: {label:'Just updated', key:r => (lastChange(r.hd) || {t:0}).t, dir:-1},
+};
+const cmp = (k, dir) => (a, b) => { const x = SORTS[k].key(a), y = SORTS[k].key(b); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir || a.hd - b.hd; };
+const FILTERS = [['all', 'All 124'], ['contested', 'Contested'], ['reporting', 'Reporting'], ['close', 'Within 5 pts'], ['flips', 'Changing hands'], ['wait', 'No votes yet'], ['targets', 'Key Flip Targets']];
+const PRESETS = [
+  ['closest', 'Closest races', {filter:'reporting', held:'all', region:'all', sort:'close', dir:1}],
+  ['pickups', 'Best Dem pickup chances', {filter:'contested', held:'R', region:'all', sort:'margin', dir:-1}],
+  ['risk', 'Dem seats most at risk', {filter:'reporting', held:'D', region:'all', sort:'margin', dir:1}],
+  ['swing', 'Biggest swing to Dems', {filter:'reporting', held:'all', region:'all', sort:'swing', dir:-1}],
+  ['counted', 'Most counted', {filter:'contested', held:'all', region:'all', sort:'counted', dir:-1}],
+  ['updated', 'Just updated', {filter:'all', held:'all', region:'all', sort:'updated', dir:-1}],
+];
+const REGIONS = ['Upstate', 'Midlands', 'Pee Dee', 'Lowcountry'];
+let tableHeld = 'all', tableRegion = 'all', tableQuery = '';
+function savePrefs() { try { localStorage.setItem('scwatch-prefs', JSON.stringify({tableSort, tableDir, tableFilter, tableHeld, tableRegion, targetSort})); } catch (e) {} }
+try { const p = JSON.parse(localStorage.getItem('scwatch-prefs') || 'null'); if (p) { if (SORTS[p.tableSort]) { tableSort = p.tableSort; tableDir = p.tableDir === -1 ? -1 : 1; } if (FILTERS.some(f => f[0] === p.tableFilter)) tableFilter = p.tableFilter; if (['all', 'D', 'R'].includes(p.tableHeld)) tableHeld = p.tableHeld; if (p.tableRegion === 'all' || REGIONS.includes(p.tableRegion)) tableRegion = p.tableRegion; if (SORTS[p.targetSort]) targetSort = p.targetSort; } } catch (e) {}
+
 function tableHTML() {
-  const filters = [['all', 'All 124'], ['contested', 'Contested'], ['close', 'Within 5 pts'], ['flips', 'Changing hands'], ['wait', 'No votes yet'], ['targets', 'Our targets']];
-  let list = races.filter(r => tableFilter === 'all' ? true
-    : tableFilter === 'contested' ? !r.unopposed
-    : tableFilter === 'close' ? r.total && !r.unopposed && Math.abs(r.margin) < 0.05
-    : tableFilter === 'flips' ? r.side && r.side !== r.incParty
-    : tableFilter === 'wait' ? r.status === 'wait'
-    : r.target);
-  const key = {hd: r => r.hd, margin: r => r.total ? r.margin : (r.unopposed ? (r.real[0].party === 'DEM' ? 2 : -2) : -9),
-               close: r => r.total && !r.unopposed ? Math.abs(r.margin) : 9, counted: r => r.share, base: r => r.base, status: r => Object.keys(STATUS).indexOf(r.status)}[tableSort];
-  list.sort((a, b) => (key(a) - key(b)) * tableDir || a.hd - b.hd);
-  const th = (k, l, cls='') => `<th class="${cls}" data-sort="${k}">${l}${tableSort === k ? (tableDir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const q = tableQuery.trim().toLowerCase();
+  let list = races.filter(r => (tableFilter === 'all' ? true
+      : tableFilter === 'contested' ? !r.unopposed
+      : tableFilter === 'reporting' ? !r.unopposed && r.total > 0
+      : tableFilter === 'close' ? r.total && !r.unopposed && Math.abs(r.margin) < 0.05
+      : tableFilter === 'flips' ? r.side && r.side !== r.incParty
+      : tableFilter === 'wait' ? r.status === 'wait'
+      : r.target)
+    && (tableHeld === 'all' || r.incParty === tableHeld)
+    && (tableRegion === 'all' || r.region.startsWith(tableRegion))
+    && (!q || String(r.hd) === q.replace(/^hd\s*/, '') || [r.region, r.inc, r.dem && r.dem.name, r.opp && r.opp.name].some(s => s && s.toLowerCase().includes(q))));
+  list.sort(cmp(tableSort, tableDir));
+  const th = (k, l, cls='', title='') => `<th class="${cls}" data-sort="${k}"${title ? ` title="${title}"` : ''}>${l}${tableSort === k ? (tableDir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
   const rows = list.map(r => {
-    const dp = r.total && r.dem ? pct(r.dem.votes / r.total) : '–', op = r.total && r.opp ? pct(r.opp.votes / r.total) : '–';
+    const dp = r.total && r.dem && !r.unopposed ? pct(r.dem.votes / r.total) : '–', op = r.total && r.opp && !r.unopposed ? pct(r.opp.votes / r.total) : '–';
     const opp = r.unopposed ? '<span class="meta">no opponent</span>' : r.opp ? `<b style="color:${r.opp.party === 'REP' ? 'var(--rep)' : '#5B21B6'}">${plabel(r.opp.party)}</b> <span class="nm">${esc(r.opp.name)}</span>` : '–';
+    const sw = r.total && !r.unopposed ? r.margin - r.base : null;
     return `<tr data-hd="${r.hd}" class="${selected === r.hd ? 'sel' : ''}${isFresh(r.hd) ? ' fresh' : ''}" id="row-${r.hd}">
-      <td><b>${r.hd}</b>${r.target ? '<span class="tg">TARGET</span>' : ''}</td>
-      <td><span class="nm" style="max-width:80px">${esc(r.region.split('/').pop().trim())}</span></td>
+      <td><b>${r.hd}</b>${r.target ? `<span class="tg">${r.incParty === 'D' ? 'DEFEND' : 'KEY FLIP'}</span>` : ''}</td>
+      <td><span class="nm" style="max-width:80px" title="${esc(r.region)}">${esc(r.counties.join(', '))}</span></td>
       <td>${r.dem ? `<span class="nm">${esc(r.dem.name)}</span>` : '–'}</td><td>${opp}</td>
-      <td class="num" style="color:var(--dem)">${dp}</td><td class="num" style="color:var(--rep)">${op}</td>
+      <td class="num" style="color:var(--dem)">${dp}</td>
       <td class="num"><b>${r.total && !r.unopposed ? pts(r.margin) : '–'}</b></td>
+      <td class="num" style="color:${sw === null ? 'inherit' : sw >= 0 ? 'var(--dem)' : 'var(--rep)'}">${sw === null ? '–' : (sw >= 0 ? '+' : '−') + Math.abs(sw * 100).toFixed(1)}</td>
       <td>${r.unopposed ? '' : `<span class="pbar"><span style="width:${r.share * 100}%"></span></span>${pct(r.share, 0)}`}</td>
       <td><span class="badge b-${r.status}">${STATUS[r.status].label}</span></td>
       <td>${r.incParty === 'D' ? '<b style="color:var(--dem)">D</b>' : '<b style="color:var(--rep)">R</b>'}</td></tr>`;
   }).join('');
+  const isPreset = p => tableFilter === p.filter && tableHeld === p.held && tableRegion === p.region && tableSort === p.sort && tableDir === p.dir;
   return `<h2 class="panelhead">All 124 House races</h2>
-    <div class="toolbar">Show: ${filters.map(([k, l]) => `<button data-filter="${k}" class="${tableFilter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
-    <div class="tablewrap"><table class="house"><thead><tr>${th('hd', 'HD')}<th>Area</th><th>Democrat</th><th>Opponent</th>${th('margin', 'D %', 'num')}<th class="num">Opp %</th>${th('close', 'Margin', 'num')}${th('counted', 'Counted')}${th('status', 'Status')}<th title="Party holding the seat today">Held</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="10" class="meta">No races match this filter yet.</td></tr>'}</tbody></table></div>`;
+    <div class="toolbar">Quick views: ${PRESETS.map(([k, l, p]) => `<button data-preset="${k}" class="${isPreset(p) ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="toolbar">Show: ${FILTERS.map(([k, l]) => `<button data-filter="${k}" class="${tableFilter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="toolbar">
+      <select id="treg" aria-label="Region"><option value="all">All regions</option>${REGIONS.map(x => `<option${tableRegion === x ? ' selected' : ''}>${x}</option>`).join('')}</select>
+      <select id="theld" aria-label="Held by"><option value="all">Held by either party</option><option value="R"${tableHeld === 'R' ? ' selected' : ''}>Rep-held seats</option><option value="D"${tableHeld === 'D' ? ' selected' : ''}>Dem-held seats</option></select>
+      <input id="tq" type="search" placeholder="Search district, county or candidate" value="${esc(tableQuery)}" style="flex:1;min-width:180px;font:inherit;padding:5px 10px;border:1px solid var(--line);border-radius:8px">
+      <span class="meta">${list.length} of 124 · click any column to sort</span>
+    </div>
+    <div class="tablewrap"><table class="house"><thead><tr>${th('hd', 'HD')}${th('area', 'Counties')}${th('dem', 'Democrat')}${th('opp', 'Opponent')}${th('dpct', 'D %', 'num')}${th('margin', 'Margin', 'num')}${th('swing', 'vs base', 'num', 'Dem margin now minus the district 2020-24 baseline: + means Democrats are running ahead of it')}${th('counted', 'Counted')}${th('status', 'Status')}${th('held', 'Held', '', 'Party holding the seat today')}</tr></thead>
+    <tbody>${rows || '<tr><td colspan="10" class="meta">No races match these choices.</td></tr>'}</tbody></table></div>`;
 }
 
 // ---------------- interaction ----------------
@@ -784,10 +841,21 @@ document.addEventListener('click', ev => {
   const t = ev.target;
   const tab = t.closest('#tabs button'); if (tab) return setView(tab.dataset.view);
   const z = t.closest('#zoom button'); if (z) return zoomTo(z.dataset.zoom);
-  const ts = t.closest('[data-tsort]'); if (ts) { targetSort = ts.dataset.tsort; return render(); }
-  const f = t.closest('[data-filter]'); if (f) { tableFilter = f.dataset.filter; return render(); }
-  const s = t.closest('th[data-sort]'); if (s) { if (tableSort === s.dataset.sort) tableDir = -tableDir; else { tableSort = s.dataset.sort; tableDir = s.dataset.sort === 'margin' ? -1 : 1; } return render(); }
+  const ts = t.closest('[data-tsort]'); if (ts) { targetSort = ts.dataset.tsort; savePrefs(); return render(); }
+  const f = t.closest('[data-filter]'); if (f) { tableFilter = f.dataset.filter; savePrefs(); return render(); }
+  const pr = t.closest('[data-preset]'); if (pr) { const p = PRESETS.find(x => x[0] === pr.dataset.preset)[2]; tableFilter = p.filter; tableHeld = p.held; tableRegion = p.region; tableSort = p.sort; tableDir = p.dir; savePrefs(); return render(); }
+  const s = t.closest('th[data-sort]'); if (s) { const k = s.dataset.sort; if (tableSort === k) tableDir = -tableDir; else { tableSort = k; tableDir = SORTS[k].dir; } savePrefs(); return render(); }
   const hdEl = t.closest('[data-hd]'); if (hdEl && !t.closest('svg')) { const hd = +hdEl.dataset.hd; selected = null; return select(hd, false); }
+});
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'treg') { tableRegion = ev.target.value; savePrefs(); render(); }
+  if (ev.target.id === 'theld') { tableHeld = ev.target.value; savePrefs(); render(); }
+});
+document.addEventListener('input', ev => {
+  if (ev.target.id !== 'tq') return;
+  tableQuery = ev.target.value; const pos = ev.target.selectionStart;
+  renderPanel();
+  const inp = document.getElementById('tq'); inp.focus(); inp.setSelectionRange(pos, pos);
 });
 document.getElementById('refresh').onclick = load;
 document.getElementById('demo').hidden = !DEMO;
@@ -826,8 +894,72 @@ function demoData(tick) {
   return {summary, details, chsSum};
 }
 
+// ---------------- self-test (?selftest): checks the seat maths on scenarios with known answers ----------------
+function runSelfTest() {
+  const out = [], ok = (name, cond, got) => out.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : '  got: ' + JSON.stringify(got)}`);
+  const dHeld = HOUSE.filter(h => h.incParty === 'D').map(h => h.hd), rHeld = HOUSE.filter(h => h.incParty === 'R').map(h => h.hd);
+  const U = dHeld.filter(hd => hd !== 31).slice(0, 19); // 19 unopposed Democrats, as on tonight's ballot
+  const scen = f => {
+    const summary = [], details = [];
+    for (const h of HOUSE) {
+      const s = f(h);
+      summary.push({K:'T' + h.hd, C:`State  House of Representatives, District  ${h.hd}`, CH:[...s.p.map((p, i) => `${p} Cand ${i}`), 'Write-In'], P:[...s.p, 'NON'], V:[...s.v, 0], W:[...(s.w || s.p.map(() => 0)), 0]});
+      details.push({K:'T' + h.hd, P:['X'], PX:[s.pr], PY:[10], V:[[]]});
+    }
+    const rs = buildRaces(summary, details); return {rs, T: tally(rs)};
+  };
+  const unopp = h => U.includes(h.hd) ? {p:['DEM'], v:[0], pr:0} : null;
+  // A: before any votes
+  let {T} = scen(h => unopp(h) || {p:['REP', 'DEM'], v:[0, 0], pr:0});
+  ok('A start: Dem won 19 (unopposed)', T.Dwon === 19, T.Dwon); ok('A start: projected D 35 / R 89', T.Dproj === 35 && T.Rproj === 89, [T.Dproj, T.Rproj]);
+  ok('A start: verdict = no votes yet', verdict(T).state === 'none', verdict(T).state);
+  // B: everything counted, Dems hold all their seats and flip exactly 7 -> 42 / 82
+  const flips7 = rHeld.slice(0, 7);
+  ({T} = scen(h => unopp(h) || {p:['REP', 'DEM'], v: h.incParty === 'D' || flips7.includes(h.hd) ? [400, 600] : [600, 400], pr:10}));
+  ok('B 42/82: Dem won 42, Rep won 82', T.Dwon === 42 && T.Rwon === 82, [T.Dwon, T.Rwon]);
+  ok('B 42/82: Dem pickups 7, Rep pickups 0', T.dGain.length === 7 && T.rGain.length === 0, [T.dGain.length, T.rGain.length]);
+  ok('B 42/82: verdict = broken', verdict(T).state === 'broken', verdict(T).state);
+  // C: one fewer flip -> 41 / 83
+  const flips6 = rHeld.slice(0, 6);
+  ({T} = scen(h => unopp(h) || {p:['REP', 'DEM'], v: h.incParty === 'D' || flips6.includes(h.hd) ? [400, 600] : [600, 400], pr:10}));
+  ok('C 41/83: verdict = Republicans clinched', T.Rwon === 83 && verdict(T).state === 'rclinch', [T.Rwon, verdict(T).state]);
+  // D: Dems flip 7 but lose HD 31 to a third party -> D 41, R 82, other 1: still broken
+  ({T} = scen(h => unopp(h) || (h.hd === 31 ? {p:['UNC', 'DEM'], v:[600, 400], pr:10} : {p:['REP', 'DEM'], v: h.incParty === 'D' || flips7.includes(h.hd) ? [400, 600] : [600, 400], pr:10})));
+  ok('D third party: D 41 / R 82 / other 1', T.Dwon === 41 && T.Rwon === 82 && T.Owon === 1, [T.Dwon, T.Rwon, T.Owon]);
+  ok('D third party: verdict = broken (Republicans below 83)', verdict(T).state === 'broken', verdict(T).state);
+  // E: B, but one flip finishes 50.3-49.7: recount range, not won
+  ({T} = scen(h => unopp(h) || {p:['REP', 'DEM'], v: h.hd === flips7[0] ? [497, 503] : h.incParty === 'D' || flips7.includes(h.hd) ? [400, 600] : [600, 400], pr:10}));
+  ok('E recount: Dem won 41 + 1 in recount range, projected 42', T.Dwon === 41 && T.recount === 1 && T.Dproj === 42, [T.Dwon, T.recount, T.Dproj]);
+  ok('E recount: verdict = on track to break (not yet broken)', verdict(T).state === 'dbreak', verdict(T).state);
+  // F: half counted, every seat leaning to its current party
+  ({T} = scen(h => unopp(h) || {p:['REP', 'DEM'], v: h.incParty === 'D' ? [300, 700] : [700, 300], pr:5}));
+  ok('F partial: projected D 35 / R 89, verdict = Republicans keep', T.Dproj === 35 && T.Rproj === 89 && verdict(T).state === 'rkeep', [T.Dproj, T.Rproj, verdict(T).state]);
+  ok('F partial: "must lose" count = 7', T.Rproj - (SUPER - 1) === 7, T.Rproj - (SUPER - 1));
+  // G: 400 random nights: every seat lands in exactly one bucket and the totals always add to 124
+  let bad = 0, rnd = 12345; const R = () => (rnd = (rnd * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let k = 0; k < 400 && !bad; k++) {
+    const {rs, T} = scen(h => {
+      if (U.includes(h.hd)) return {p:['DEM'], v:[Math.floor(R() * 900)], pr:Math.floor(R() * 11)};
+      const p = R() < 0.05 ? ['REP', 'DEM', 'UNC'] : ['REP', 'DEM'];
+      const pr = R() < 0.25 ? 0 : Math.floor(R() * 11), v = p.map(() => pr ? Math.floor(R() * 1000) : 0);
+      return {p, v, pr, w: R() < 0.03 && pr ? p.map((x, i) => i === 0 ? 1 : 0) : undefined};
+    });
+    const buckets = T.Dwon + T.Rwon + T.Owon + T.Dlead + T.Rlead + T.Olead + T.wait;
+    const proj = T.Dproj + T.Rproj + T.Owon + T.Olead;
+    const brute = rs.filter(r => r.final && r.side === 'R').length;
+    const v = verdict(T).state;
+    if (buckets !== 124 || proj !== 124 || brute !== T.Rwon || T.Rmax !== 124 - T.Dwon - T.Owon || (T.Rwon >= 83 && v !== 'rclinch') || (T.Rwon < 83 && T.Rmax < 83 && v !== 'broken')) { bad++; ok('G random night #' + k, false, {buckets, proj, Rwon: T.Rwon, brute, Rmax: T.Rmax, v}); }
+  }
+  ok('G 400 random nights: seats always add to 124, verdict matches the rules', !bad, bad);
+  const fails = out.filter(l => l.startsWith('FAIL')).length;
+  const pre = document.createElement('pre'); pre.id = 'selftest'; pre.textContent = `SELF-TEST ${fails ? 'FAILED' : 'PASSED'}: ${out.length - fails} of ${out.length}\n` + out.join('\n');
+  pre.style.cssText = 'background:#fff;border:2px solid ' + (fails ? '#DC2626' : '#059669') + ';padding:12px;border-radius:8px;white-space:pre-wrap';
+  document.querySelector('.wrap').prepend(pre);
+}
+
 setupMap();
 zoomTo(view === 'local' ? 'chs' : 'state');
+if (params.has('selftest')) runSelfTest();
 (async () => {
   const n = DEMO ? Math.max(1, parseInt(params.get('demo')) || 1) : 1;
   for (let k = 0; k < n; k++) await load();
