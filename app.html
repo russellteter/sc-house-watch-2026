@@ -193,6 +193,13 @@ details td:first-child,details th:first-child{text-align:left}
 .ctwrap{max-height:70vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
 .mlegend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .mlegend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+
+.hemi{margin:4px 0 10px}.hemi svg{width:100%;max-width:640px;height:auto;display:block;margin:0 auto}
+.hemi .seat{cursor:pointer;stroke:#fff;stroke-width:1}.hemi .seat:hover,.hemi .seat.sel{stroke:#0F172A;stroke-width:2}
+.hnum{font:800 56px 'DM Sans',sans-serif;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:6px}.hnum.d{fill:var(--dem)}.hnum.r{fill:var(--rep)}
+.hmid{font:800 26px 'DM Sans',sans-serif;text-anchor:middle;fill:#475569;paint-order:stroke;stroke:#fff;stroke-width:5px}
+.hsub{font:600 11px 'DM Sans',sans-serif;text-anchor:middle;fill:#64748B;paint-order:stroke;stroke:#fff;stroke-width:4px}
+.hcap{font-size:12px;color:var(--muted);text-align:center;max-width:720px;margin:4px auto 0}
 footer{margin-top:24px;color:var(--muted);font-size:12px;line-height:1.6}
 footer a{color:var(--brand)}
 </style>
@@ -709,6 +716,7 @@ function renderScore(T) {
     <div class="repline">${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main && sen.main.ballots ? expPill(sen.main.ballots) : ''; })()}${repPill(T.pr, T.tp, T.anyVotes, T.pp)}<span>across the ${T.contested} contested House races · <b>${T.withVotes}</b> of ${T.contested} races have votes · <b>${T.fullIn}</b> fully counted</span></div>
     ${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main ? vtLine(sen.main.vt, 'Votes counted statewide so far (U.S. Senate race)') : ''; })()}
     <div class="subline">${sub}</div>
+    ${seatChart(T)}
     <div class="seatwrap">
       <div class="seatbar">${bar}</div>
       <div class="mark t" style="left:${(D_BREAK - 0.5) / SEATS * 100}%"><b>Supermajority line: Dems need ${D_BREAK} · Reps need ${SUPER}</b></div>
@@ -1131,6 +1139,38 @@ document.addEventListener('click', ev => {
   const h = ev.target.closest('th[data-ssort]'); if (h) { const k = h.dataset.ssort; if (senSort === k) senDir = -senDir; else { senSort = k; senDir = k === 'county' ? 1 : -1; } renderSenate(); }
   const cp = ev.target.closest('.cmap path[data-county]'); if (cp) { const row = document.querySelector(`.ctable tr[data-county="${cp.dataset.county}"]`); if (row) { row.scrollIntoView({behavior: 'smooth', block: 'center'}); row.style.background = '#EEF2FF'; setTimeout(() => row.style.background = '', 1500); } }
 });
+
+// ---------------- seating chart (hemicycle) ----------------
+const SEAT_XY = (() => { // 124 seats on 5 arcs, sorted left to right
+  const rows = 5, r0 = 1, r1 = 2.05, pts = [];
+  const counts = []; let tot = 0;
+  for (let i = 0; i < rows; i++) { const r = r0 + (r1 - r0) * i / (rows - 1); counts.push(r); tot += r; }
+  let left = SEATS; const per = counts.map((c, i) => { const n = i === rows - 1 ? left : Math.round(c / tot * SEATS); left -= n; return n; });
+  per.forEach((n, i) => { const r = r0 + (r1 - r0) * i / (rows - 1); for (let k = 0; k < n; k++) { const a = Math.PI - Math.PI * (k + 0.5) / n; pts.push({x: r * Math.cos(a), y: -r * Math.sin(a), a}); } });
+  return pts.sort((p, q) => q.a - p.a);
+})();
+function seatChart(T) {
+  const close = r => r.status === 'toss' || r.status === 'recount';
+  const grp = k => races.filter(k).sort((a, b) => a.hd - b.hd);
+  const order = [
+    ...grp(r => r.final && r.side === 'D').map(r => [r, '#1E40AF']),
+    ...grp(r => !r.final && r.side === 'D' && !close(r)).map(r => [r, '#3B82F6']),
+    ...grp(r => !r.final && r.side === 'D' && close(r)).map(r => [r, '#93C5FD']),
+    ...grp(r => r.status === 'wait' && r.incParty === 'D').map(r => [r, '#DBEAFE']),
+    ...grp(r => r.side === 'O').map(r => [r, '#A78BFA']),
+    ...grp(r => r.status === 'wait' && r.incParty === 'R').map(r => [r, '#FEE2E2']),
+    ...grp(r => !r.final && r.side === 'R' && close(r)).map(r => [r, '#FCA5A5']),
+    ...grp(r => !r.final && r.side === 'R' && !close(r)).map(r => [r, '#DC2626']),
+    ...grp(r => r.final && r.side === 'R').map(r => [r, '#991B1B']),
+  ];
+  const dots = order.map(([r, col], i) => { const p = SEAT_XY[i]; return `<circle cx="${(p.x * 100).toFixed(1)}" cy="${(p.y * 100).toFixed(1)}" r="7.2" fill="${col}" data-hd="${r.hd}" class="seat${selected === r.hd ? ' sel' : ''}"><title>HD ${r.hd} · ${esc(r.region)}\n${STATUS[r.status].label}${r.total && !r.unopposed ? ` · ${pts(r.margin)} · ${repPct(r.pr, r.tp)}% complete` : ''}</title></circle>`; }).join('');
+  const und = T.wait + T.toss;
+  return `<div class="hemi"><svg viewBox="-215 -215 430 232" role="img" aria-label="Seating chart of the 124 House seats">${dots}
+    <text x="-150" y="-6" class="hnum d">${T.Dproj}</text><text x="150" y="-6" class="hnum r">${T.Rproj}</text>
+    <text x="0" y="-26" class="hmid">${und}</text><text x="0" y="-10" class="hsub">not yet decided</text>
+    <text x="-150" y="12" class="hsub">Democrats</text><text x="150" y="12" class="hsub">Republicans</text></svg>
+    <div class="hcap">Each dot is one seat, Democrats filling from the left and Republicans from the right. Dark = won · medium = leading · pale = leading by under 3 points · faint = no votes yet (shown with the party that holds it today). Hover a dot for the district; click to jump to it. Supermajority line: 83 seats; Democrats break it at 42.</div></div>`;
+}
 
 // ---------------- interaction ----------------
 function setView(v) {
