@@ -519,7 +519,7 @@ async function load() {
     const lms = countyInfo ? Object.values(countyInfo.counties).map(c => c.lm).filter(Boolean) : [];
     const newest = lms.length ? ` · newest county posting ${tm(Math.max(...lms))} ET` : '';
     const roll = stateDown ? ` · statewide feed down (${stateDown}), running on county pages` : lastPosted && !isNaN(Date.parse(lastPosted)) ? ` · statewide rollup ${tm(Date.parse(lastPosted))}` : '';
-    const cf = countyInfo ? ` · ${countyInfo.total - countyInfo.fail.length} of ${countyInfo.total} county feeds read${countyInfo.fail.length ? ' (using the statewide numbers for ' + countyInfo.fail.join(', ') + ')' : ''}` : '';
+    const cf = !countyInfo ? '' : countyInfo.total === 0 ? ' · using the state\'s final statewide results (county links no longer published)' : ` · ${countyInfo.total - countyInfo.fail.length} of ${countyInfo.total} county feeds read${countyInfo.fail.length ? ' (using the statewide numbers for ' + countyInfo.fail.join(', ') + ')' : ''}`;
     setStat(`Checked ${tm(Date.now())} ET${newest}${roll}${cf}`, countyInfo && countyInfo.fail.length ? 'err' : 'live');
   } catch (e) {
     console.error(e);
