@@ -53,6 +53,21 @@ button:hover{border-color:var(--brand);color:var(--brand)}
 .card.s-hold,.card.s-rflip{border-left-color:var(--rep)}
 .card.s-dhold{border-left-color:var(--dem)}
 .b-dhold{background:var(--dem);color:#fff}.b-rflip{background:#7F1D1D;color:#fff}
+.log{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:16px}
+.log h2{font-size:15px}.log .sub{font:400 12px 'Space Grotesk',sans-serif;color:var(--muted);margin-left:6px}
+#events{list-style:none;margin:6px 0 0;padding:0;max-height:168px;overflow:auto}
+#events li{display:grid;grid-template-columns:64px 130px minmax(0,1fr);gap:8px;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px}
+#events li:last-child{border-bottom:0}
+#events li[data-hd]{cursor:pointer}#events li[data-hd]:hover{background:var(--soft)}
+#events li:only-child{display:block;color:var(--muted)}
+#events time{color:var(--muted);font-variant-numeric:tabular-nums}
+#events li.good b,#events li.good span{color:var(--flip)}#events li.bad b,#events li.bad span{color:var(--rep)}
+@media (max-width:640px){#events li{grid-template-columns:56px minmax(0,1fr)}#events li span{grid-column:2}}
+.pin{font:600 11px 'DM Sans',sans-serif;color:var(--brand);background:var(--brand-50,#EEF2FF);padding:2px 7px;border-radius:999px;vertical-align:3px}
+.newtag{font:600 11px 'DM Sans',sans-serif;color:#92400E;background:#FEF3C7;padding:2px 7px;border-radius:999px;vertical-align:3px}
+.card.fresh{box-shadow:0 0 0 3px #FDE68A}
+.trend{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)}
+.trend .spark{flex:none}
 .xsec{margin-bottom:16px}
 .xsec h2{font-size:16px;margin-bottom:8px}
 .xgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
@@ -101,6 +116,11 @@ footer a{color:var(--brand)}
 </header>
 
 <div class="tally" id="tally"></div>
+
+<section class="log">
+  <h2>Latest changes <span class="sub">newest first · click a district to jump to it</span></h2>
+  <ol id="events"></ol>
+</section>
 
 <div class="grid">
   <div>
@@ -185,6 +205,10 @@ const STATUS = {
 };
 const DEMO = new URLSearchParams(location.search).has('demo');
 let sortBy = 'hd', selected = null, lastRaces = null, lastExtras = null, extraErr = null, nextAt = 0, version = null;
+const PINNED = [110]; // always shown first
+const HKEY = DEMO ? null : 'scwatch-hist-127300';
+let hist = [], lastPosted = null, demoTick = 0, unseen = false;
+try { if (HKEY) hist = JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { hist = []; }
 
 const fmt = n => n.toLocaleString('en-US');
 const pct = (x, d=1) => (x*100).toFixed(d) + '%';
@@ -202,7 +226,7 @@ async function load() {
   setStat('Checking for new results…', '');
   try {
     let summary, details, chsSum = null;
-    if (DEMO) { ({summary, details, chsSum} = demoData()); version = 'demo'; }
+    if (DEMO) { demoTick++; ({summary, details, chsSum} = demoData(demoTick)); version = 'demo-' + demoTick; lastPosted = new Date().toUTCString(); }
     else {
       const chsP = loadFeed(CHS, ['json/en/summary.json']).then(([s]) => s).catch(e => { extraErr = e.message; return null; });
       [summary, details] = await loadFeed(ELECTION, ['json/en/summary.json', 'json/details.json']);
@@ -212,8 +236,10 @@ async function load() {
     details = details.Contests || details;
     lastRaces = build(summary, details);
     lastExtras = buildExtras(summary, details, chsSum);
+    if (recordSnapshot() && document.hidden) unseen = true;
     render();
-    setStat(`Updated ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · feed version ${version}`, 'live');
+    const posted = lastPosted && !isNaN(Date.parse(lastPosted)) ? ` · state feed last updated ${tm(Date.parse(lastPosted))}` : '';
+    setStat(`Checked ${tm(Date.now())}${posted}`, 'live');
   } catch (e) {
     console.error(e);
     setStat('Could not reach the results feed (' + e.message + '). Will retry.', 'err');
@@ -225,7 +251,7 @@ async function loadFeed(base, files) {
   const vr = await fetch(base + '/current_ver.txt?_=' + Date.now(), {cache:'no-store'});
   if (!vr.ok) throw new Error(vr.status + ' on ' + base.split('/SC/')[1] + ' current_ver.txt');
   const v = (await vr.text()).trim();
-  if (base === ELECTION) version = v;
+  if (base === ELECTION) { version = v; lastPosted = vr.headers.get('Last-Modified'); }
   return Promise.all(files.map(f => getJSON(`${base}/${v}/${f}`)));
 }
 
@@ -337,7 +363,83 @@ function sorted(races) {
   else if (sortBy === 'close') r.sort((a, b) => (a.total ? Math.abs(a.margin) : 9) - (b.total ? Math.abs(b.margin) : 9));
   else if (sortBy === 'baseline') r.sort((a, b) => b.base - a.base);
   else r.sort((a, b) => a.hd - b.hd);
-  return r;
+  return [...r.filter(x => PINNED.includes(x.hd)), ...r.filter(x => !PINNED.includes(x.hd))];
+}
+
+// ---- History of postings (kept in this browser so a reload keeps the night's trail) ----
+const tm = t => new Date(t).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+const tot = a => a ? a[0] + a[1] + a[2] : 0;
+const mar = a => tot(a) ? (a[0] - a[1]) / tot(a) : 0;
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const FINAL = ['flip', 'dhold', 'hold', 'rflip'];
+
+function recordSnapshot() {
+  const s = {t: Date.now(), v: version, r: {}, x: {}};
+  for (const r of lastRaces) s.r[r.hd] = r.missing ? null : [r.dem.votes, r.rep.votes, r.other, r.pr, r.tp, r.status];
+  for (const e of lastExtras) { const m = e.main; s.x[e.id] = m ? [m.leader ? m.leader.name.split(' / ')[0] : '', m.leader ? m.leader.votes : 0, m.second ? m.second.votes : 0, m.total, m.pr, m.tp, m.status, m.leader ? m.leader.party : ''] : null; }
+  const prev = hist[hist.length - 1];
+  if (prev && same(prev.r, s.r) && same(prev.x, s.x)) return false;
+  hist.push(s);
+  if (hist.length > 300) hist = hist.slice(-300);
+  try { if (HKEY) localStorage.setItem(HKEY, JSON.stringify(hist)); } catch (e) {}
+  return true;
+}
+
+function lastChange(hd) {
+  for (let i = hist.length - 1; i > 0; i--) {
+    const a = hist[i - 1].r[hd], b = hist[i].r[hd];
+    if (a && b && !same(a, b)) return {t: hist[i].t, i, a, b};
+  }
+  return null;
+}
+
+function describeChange(c) {
+  const {a, b} = c;
+  if (!tot(a)) return `First votes in at ${tm(c.t)}`;
+  const d = mar(b) - mar(a);
+  const moved = Math.abs(d) < 0.0005 ? 'margin unchanged' : `margin moved ${Math.abs(d * 100).toFixed(1)} pts toward ${d > 0 ? 'Dem' : 'Rep'}`;
+  return `Last change ${tm(c.t)}: +${fmt(tot(b) - tot(a))} votes, +${b[3] - a[3]} precincts, ${moved}`;
+}
+
+function spark(hd) {
+  const ms = hist.map(s => s.r[hd]).filter(a => a && tot(a)).map(mar);
+  if (ms.length < 2) return '';
+  const W = 110, H = 26, M = Math.max(0.05, ...ms.map(Math.abs));
+  const xy = ms.map((m, i) => [i / (ms.length - 1) * (W - 6) + 3, H / 2 - m / M * (H / 2 - 3)]);
+  const [lx, ly] = xy[xy.length - 1];
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Dem margin over the night (above the line = Dem ahead)"><title>Dem margin over the night: above the dashed line = Dem ahead</title><line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" stroke="#CBD5E1" stroke-dasharray="2 2"/><polyline fill="none" stroke="#64748B" stroke-width="1.5" points="${xy.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}"/><circle cx="${lx}" cy="${ly}" r="2.5" fill="${ms[ms.length - 1] >= 0 ? '#3B82F6' : '#DC2626'}"/></svg>`;
+}
+
+function events() {
+  const out = [], names = {};
+  for (const r of lastRaces || []) if (!r.missing) names[r.hd] = {D: r.dem.name, R: r.rep.name};
+  for (let i = 1; i < hist.length; i++) {
+    const A = hist[i - 1], B = hist[i];
+    for (const t of TARGETS) {
+      const a = A.r[t.hd], b = B.r[t.hd];
+      if (!a || !b || same(a, b) || !names[t.hd]) continue;
+      const ma = mar(a), mb = mar(b), pc = `${b[3]} of ${b[4]} precincts`;
+      const leader = mb >= 0 ? `${names[t.hd].D} (D)` : `${names[t.hd].R} (R)`;
+      let txt, kind = '';
+      if (FINAL.includes(b[5]) && !FINAL.includes(a[5])) { txt = `${STATUS[b[5]].label}. ${leader} finishes ${pts(mb)}.`; kind = b[5] === 'flip' || b[5] === 'dhold' ? 'good' : 'bad'; }
+      else if (!tot(a)) txt = `First votes in: ${leader} leads, ${pts(mb)} (${pc}).`;
+      else if (Math.sign(ma) !== Math.sign(mb) && mb !== 0) { txt = `Lead changes: ${leader} now ahead, ${pts(mb)} (${pc}).`; kind = mb > 0 ? 'good' : 'bad'; }
+      else txt = `+${fmt(tot(b) - tot(a))} votes; margin ${pts(ma)} → ${pts(mb)} (${pc}).`;
+      out.push({t: B.t, lab: 'HD ' + t.hd, txt, kind, hd: t.hd});
+    }
+    for (const e of EXTRA) {
+      const a = A.x[e.id], b = B.x[e.id];
+      if (!a || !b || same(a, b) || !b[3]) continue;
+      const mm = ((b[1] - b[2]) / b[3] * 100).toFixed(1), who = b[0] + (b[7] && b[7] !== 'NON' ? ` (${b[7][0]})` : '');
+      let txt;
+      if (['called', 'final'].includes(b[6]) && !['called', 'final'].includes(a[6])) txt = `${who} wins by ${mm} pts.`;
+      else if (!a[3]) txt = `First votes in: ${who} leads by ${mm} pts.`;
+      else if (a[0] !== b[0]) txt = `Lead changes: ${who} now ahead by ${mm} pts.`;
+      else continue; // routine updates to these races stay off the feed to keep it readable
+      out.push({t: B.t, lab: e.title.replace(' and Lieutenant Governor', ''), txt, kind: ''});
+    }
+  }
+  return out.reverse();
 }
 
 function characterize(r) {
@@ -375,6 +477,11 @@ function render() {
     ['', `${totTp ? Math.round(totPr / totTp * 100) : 0}%`, `Precincts counted across all ${N} districts (${fmt(totPr)} of ${fmt(totTp)})`],
   ].map(([c, n, l]) => `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l}${typeof n === 'number' && !/HD 115/.test(l) ? ' · of ' + N : ''}</div></div>`).join('');
   renderExtras();
+  document.title = `${unseen ? '● ' : ''}${cnt('flip')} flipped · ${cnt('dlead')} D lead · ${cnt('rlead')} R lead | SC House Flip Watch`;
+  const ev = events();
+  document.getElementById('events').innerHTML = ev.length
+    ? ev.slice(0, 80).map(e => `<li class="${e.kind}"${e.hd ? ` data-hd="${e.hd}"` : ''}><time>${tm(e.t)}</time><b>${esc(e.lab)}</b><span>${esc(e.txt)}</span></li>`).join('')
+    : '<li><span>No changes yet. Each time the state posts new numbers, what moved in your races appears here, newest first.</span></li>';
 
   for (const r of races) {
     const p = document.getElementById('house-' + r.hd);
@@ -390,8 +497,10 @@ function render() {
       const di = r.cands.indexOf(r.dem), ri = r.cands.indexOf(r.rep);
       return `<tr><td>${esc(c.name)}</td><td>${c.px} / ${c.py}</td><td>${fmt(c.v[di] || 0)}</td><td>${fmt(c.v[ri] || 0)}</td></tr>`;
     }).join('')}</table></details>` : '';
-    return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}" id="card-${r.hd}">
-      <div class="ch"><div><h3>HD ${r.hd}</h3><div class="meta">${esc(r.region)} · ${r.open ? `Open seat, Dem-held (was ${esc(r.inc)}) · defend` : `Incumbent ${esc(r.inc)} (${r.incParty})`}</div></div>
+    const lc = lastChange(r.hd), fresh = lc && lc.i === hist.length - 1, sp = spark(r.hd);
+    const trend = lc || sp ? `<div class="trend">${sp}<span>${lc ? describeChange(lc) : ''}</span></div>` : '';
+    return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}${fresh ? ' fresh' : ''}" id="card-${r.hd}">
+      <div class="ch"><div><h3>HD ${r.hd}${PINNED.includes(r.hd) ? ' <span class="pin">Pinned</span>' : ''}${fresh ? ' <span class="newtag">Just updated</span>' : ''}</h3><div class="meta">${esc(r.region)} · ${r.open ? `Open seat, Dem-held (was ${esc(r.inc)}) · defend` : `Incumbent ${esc(r.inc)} (${r.incParty})`}</div></div>
       <span class="badge b-${r.status}">${STATUS[r.status].label}</span></div>
       <div class="row">${cand(r.dem, 'dem')}${cand(r.rep, 'rep')}${bar}</div>
       <div class="prog" title="Precincts counted"><span style="width:${r.tp ? r.pr / r.tp * 100 : 0}%"></span></div>
@@ -400,7 +509,7 @@ function render() {
         <span>Baseline <b>${pts(r.base)}</b></span>
         <span>Early-vote lean <b>${pct(r.ev, 0)} D</b></span>
         <span>Votes counted <b>${fmt(r.total)}</b></span></div>
-      <div class="note">${characterize(r)}</div>${ctable}</div>`;
+      ${trend}<div class="note">${characterize(r)}</div>${ctable}</div>`;
   }).join('');
 }
 
@@ -430,16 +539,16 @@ function setupMap() {
   }
 }
 
-function demoData() {
-  const summary = [], details = [];
+function demoData(tick) {
+  const summary = [], details = [], f = Math.min(1, tick / 3);
   TARGETS.forEach((t, i) => {
-    const tp = 10 + i, pr = Math.floor(tp * ([0, .3, .6, 1, .8, .2, 1, .5, .9, .4, .7, 0, 1, .55][i] ?? .65));
-    const tot = pr * 400, ds = 0.5 + t.base + ((i * 37) % 9 - 4) / 100;
+    const tp = 10 + i, pr = Math.floor(tp * f * ([0, .3, .6, 1, .8, .2, 1, .5, .9, .4, .7, 0, 1, .55][i] ?? .65));
+    const tot = pr * 400, ds = 0.5 + t.base + ((i * 37) % 9 - 4) / 100 + (tick - 2) * 0.012 * ((i % 3) - 1);
     const dv = Math.round(tot * ds), rv = tot - dv - 12;
     summary.push({K:t.key, C:'State House of Representatives, District ' + t.hd, CH:['REP ' + t.inc, 'DEM Demo Challenger ' + t.hd, 'Write-In'], P:['REP','DEM','NON'], V:pr ? [rv, dv, 12] : [0,0,0], W:[0,0,0]});
     details.push({K:t.key, P:['Demo County'], PX:[pr], PY:[tp], V:[pr ? [rv, dv, 12] : [0,0,0]]});
   });
-  const mk = (K, CH, P, V, PR, TP) => ({K, C:'demo', CH, P, V, W:V.map(() => 0), PR, TP});
+  const mk = (K, CH, P, V, PR, TP) => ({K, C:'demo', CH, P, V: V.map(v => Math.round(v * f)), W:V.map(() => 0), PR: Math.round(PR * f), TP});
   summary.push(mk('21500', ['UNC A / B', 'GRN C / D', 'REP Demo Rep / Running Mate', 'DEM Demo Dem / Running Mate', 'Write-In'], ['UNC','GRN','REP','DEM','NON'], [900, 600, 410000, 352000, 300], 20, 46));
   details.push({K:'21500', P:['All'], PX:[1100], PY:[2260], V:[[]]});
   summary.push(mk('27002', ['REP Demo Rep', 'LIB Demo Lib', 'DEM Demo Dem', 'Write-In'], ['REP','LIB','DEM','NON'], [61000, 2100, 58800, 40], 3, 6));
@@ -461,8 +570,17 @@ setInterval(() => {
   document.getElementById('next').textContent = nextAt ? `· next check in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '';
   if (nextAt && Date.now() >= nextAt) load();
 }, 1000);
+document.getElementById('events').addEventListener('click', ev => {
+  const li = ev.target.closest('li[data-hd]');
+  if (li) { selected = null; select(+li.dataset.hd); }
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && unseen) { unseen = false; render(); } });
 setupMap();
-load();
+(async () => {
+  // ?demo=4 simulates four postings so the change feed and trend lines can be checked
+  const n = DEMO ? Math.max(1, parseInt(new URLSearchParams(location.search).get('demo')) || 1) : 1;
+  for (let k = 0; k < n; k++) await load();
+})();
 </script>
 </body>
 </html>
