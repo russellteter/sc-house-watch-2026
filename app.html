@@ -99,7 +99,7 @@ button.on{background:var(--head);color:#fff;border-color:var(--head)}
 table.house{border-collapse:collapse;width:100%;font-size:12.5px}
 table.house th{position:sticky;top:0;background:#fff;z-index:1;text-align:left;padding:7px 8px;border-bottom:2px solid var(--line);cursor:pointer;white-space:nowrap;font:600 12px 'DM Sans',sans-serif;color:var(--muted)}
 table.house th.num,table.house td.num{text-align:right}
-table.house td{padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.house td{padding:6px 5px;border-bottom:1px solid var(--line);white-space:nowrap}
 table.house th{padding-left:6px;padding-right:6px}
 table.house tr{cursor:pointer}
 table.house tr:hover td{background:var(--soft)}
@@ -107,7 +107,7 @@ table.house tr.sel td{background:#EEF2FF}
 table.house tr.fresh td:first-child{box-shadow:inset 3px 0 0 #F59E0B}
 table.house .nm{max-width:105px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
 table.house .tg{font:600 10px 'DM Sans',sans-serif;color:var(--brand);margin-left:4px}
-.pbar{display:inline-block;width:46px;height:5px;background:var(--soft);border-radius:3px;vertical-align:middle;margin-right:5px;overflow:hidden}
+.pbar{display:inline-block;width:30px;height:5px;background:var(--soft);border-radius:3px;vertical-align:middle;margin-right:5px;overflow:hidden}
 .pbar span{display:block;height:100%;background:var(--brand)}
 /* cards */
 .cards{display:grid;gap:10px}
@@ -136,6 +136,16 @@ table.house .tg{font:600 10px 'DM Sans',sans-serif;color:var(--brand);margin-lef
 .facts b{color:var(--text);font-weight:600}
 .prog{height:5px;background:var(--soft);border-radius:3px;margin-top:8px;overflow:hidden}
 .prog span{display:block;height:100%;background:var(--brand)}
+.rep{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:3px 9px;border-radius:999px;background:var(--soft);white-space:nowrap}
+.rep b{font:700 13px 'DM Sans',sans-serif;color:var(--head)}
+.rbar{width:52px;height:6px;border-radius:3px;background:#E2E8F0;overflow:hidden;display:inline-block}
+.rbar span{display:block;height:100%;background:var(--brand)}
+.rep.rfull{background:var(--flip-tint)}.rep.rfull .rbar span{background:var(--flip)}.rep.rfull b{color:var(--flip)}
+.rep.r0 b{color:var(--muted)}
+.repwrap{margin-top:6px}
+.repline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--muted)}
+.repline .rep{font-size:13px;padding:5px 12px}.repline .rep b{font-size:15px}.repline .rbar{width:90px;height:8px}
+.pbar.full span{background:var(--flip)}
 .note{font-size:13px;margin-top:8px;color:var(--text)}
 .trend{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)}
 .trend .spark{flex:none}
@@ -217,7 +227,7 @@ footer a{color:var(--brand)}
   Source: South Carolina Election Commission official results feeds, statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 5 minutes until 8:33 PM ET, then every 10 minutes. All results are unofficial until certified.<br>
   <b>Seat math:</b> 124 seats; a majority is 63; a two-thirds supermajority is 83, so Democrats break it at 42 seats. "Held today" is each seat's current party from the "Challenge every seat 2026" sheet (89 Republican, 35 Democratic).<br>
   <b>Won</b> = every precinct counted, the state marked a winner, or the candidate has no opponent. <b>Leading</b> includes races within 3 points, credited to whoever is ahead right now. <b>Projected</b> = won + leading + seats with no votes counted yet, given to the party that holds them today.<br>
-  "Precincts counted" adds up each county's precincts for the district; SC reports absentee and early votes as their own precincts, so a district can jump in one batch. "Dem needs" assumes the remaining precincts are the same size as those counted, so treat it as rough. Baseline = average top-of-ticket Dem margin 2020–24 in the district.
+  "Reporting" = share of precincts fully counted; for a district it adds up each county's precincts for the district; SC reports absentee and early votes as their own precincts, so a district can jump in one batch. "Dem needs" assumes the remaining precincts are the same size as those counted, so treat it as rough. Baseline = average top-of-ticket Dem margin 2020–24 in the district.
 </footer>
 </div>
 
@@ -281,6 +291,13 @@ const cleanName = s => s.replace(/^(REP|DEM|NON|UNC|GRN|LIB|CON|AMR|WFM|WRK|IND)
 const tm = t => new Date(t).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
 const P1 = p => p === 'DEM' ? 'D' : p === 'REP' ? 'R' : 'O';
 const plabel = p => p === 'DEM' ? 'D' : p === 'REP' ? 'R' : (p || '?').slice(0, 3);
+// precincts reporting: rounds down so a race never shows 100% until every precinct is in
+const repPct = (pr, tp) => tp ? (pr >= tp ? 100 : Math.floor(pr / tp * 100)) : 0;
+function repPill(pr, tp, hasVotes) {
+  const p = repPct(pr, tp), cls = p >= 100 ? 'rfull' : hasVotes || pr ? 'rpart' : 'r0';
+  const note = hasVotes && !pr ? ' · early/absentee votes only' : '';
+  return `<span class="rep ${cls}" title="Precincts fully reported"><span class="rbar"><span style="width:${p}%"></span></span><b>${p}%</b> reporting <span class="rsub">${fmt(pr)} of ${fmt(tp)} precincts${note}</span></span>`;
+}
 
 // ---------------- data loading ----------------
 async function getJSON(url) {
@@ -381,9 +398,9 @@ function evalRace(h, c, d) {
 
 function tally(list) {
   const T = {Dwon:0, Rwon:0, Owon:0, Dlead:0, Rlead:0, Olead:0, toss:0, recount:0, wait:0, waitD:0, waitR:0, udem:0, urep:0,
-             dGain:[], rGain:[], pr:0, tp:0, contested:0, anyVotes:false, decided:0};
+             dGain:[], rGain:[], pr:0, tp:0, contested:0, withVotes:0, fullIn:0, anyVotes:false, decided:0};
   for (const r of list) {
-    if (!r.unopposed) { T.pr += r.pr; T.tp += r.tp; T.contested++; }
+    if (!r.unopposed) { T.pr += r.pr; T.tp += r.tp; T.contested++; if (r.total) T.withVotes++; if (r.allIn) T.fullIn++; }
     if (r.total && !r.unopposed) T.anyVotes = true;
     if (r.status === 'udem') T.udem++;
     if (r.status === 'urep') T.urep++;
@@ -524,7 +541,7 @@ function verdict(T) {
 function renderScore(T) {
   const {head, cls} = verdict(T);
   const short = Math.max(0, T.Rproj - (SUPER - 1));
-  const sub = `Projected: Democrats ${T.Dproj}, Republicans ${T.Rproj}${T.Owon + T.Olead ? `, other ${T.Owon + T.Olead}` : ''} · seats decided ${T.decided} of ${SEATS} (incl. ${T.udem + T.urep} with no opponent) · precincts counted in the ${T.contested} contested races: ${T.tp ? pct(T.pr / T.tp, 0) : '0%'} (${fmt(T.pr)} of ${fmt(T.tp)})`;
+  const sub = `Projected: Democrats ${T.Dproj}, Republicans ${T.Rproj}${T.Owon + T.Olead ? `, other ${T.Owon + T.Olead}` : ''} · seats decided ${T.decided} of ${SEATS} (incl. ${T.udem + T.urep} with no opponent)`;
 
   // seat bar, Democrats from the left, Republicans from the right
   const close = r => r.status === 'toss' || r.status === 'recount';
@@ -548,11 +565,12 @@ function renderScore(T) {
   const live = races.filter(r => !r.final && r.total && r.dem && r.opp);
   const repLeads = live.filter(r => r.side === 'R').sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin));
   const demLeads = live.filter(r => r.side === 'D').sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin));
-  const tipItem = r => `<li data-hd="${r.hd}"><b>HD ${r.hd}</b> ${pts(r.margin)} · ${pct(r.share, 0)} counted · ${esc(r.region)}${r.target ? ` · <b>${r.incParty === 'D' ? 'defend' : 'Key Flip Target'}</b>` : ''}</li>`;
+  const tipItem = r => `<li data-hd="${r.hd}"><b>HD ${r.hd}</b> ${pts(r.margin)} · <b>${repPct(r.pr, r.tp)}% reporting</b> · ${esc(r.region)}${r.target ? ` · <b>${r.incParty === 'D' ? 'defend' : 'Key Flip Target'}</b>` : ''}</li>`;
   const needLine = T.Rproj < SUPER ? `Republicans are below ${SUPER} on current projection. Next closest Republican leads:` : `Republicans must lose ${short} more seat${short === 1 ? '' : 's'} for the supermajority to break. Closest Republican leads:`;
 
   document.getElementById('score').innerHTML = `
     <div class="headline ${cls}">${head}</div>
+    <div class="repline">${repPill(T.pr, T.tp, T.anyVotes)}<span>of precincts across the ${T.contested} contested House races · <b>${T.withVotes}</b> of ${T.contested} races have votes · <b>${T.fullIn}</b> fully counted</span></div>
     <div class="subline">${sub}</div>
     <div class="seatwrap">
       <div class="seatbar">${bar}</div>
@@ -615,7 +633,7 @@ function renderMap() {
     p.classList.toggle('sel', selected === r.hd);
     const t = p.querySelector('title');
     if (t) t.textContent = `HD ${r.hd} · ${r.region} · held by ${r.incParty === 'D' ? 'Dem' : 'Rep'} today\n${STATUS[r.status].label}` +
-      (r.unopposed ? '' : r.total ? `: ${r.dem ? 'D ' + pct(r.dem.votes / r.total) : ''}${r.opp ? ' · ' + plabel(r.opp.party) + ' ' + pct(r.opp.votes / r.total) : ''} · ${pct(r.share, 0)} counted` : '');
+      (r.unopposed ? '' : r.total ? `: ${r.dem ? 'D ' + pct(r.dem.votes / r.total) : ''}${r.opp ? ' · ' + plabel(r.opp.party) + ' ' + pct(r.opp.votes / r.total) : ''} · ${repPct(r.pr, r.tp)}% of precincts reporting` : '');
   }
   document.querySelectorAll('.maplabel').forEach(l => {
     const hd = +l.dataset.hd;
@@ -681,13 +699,13 @@ function renderExtras() {
     let cl = '';
     if (e.wantCounty) {
       const c = e.county;
-      cl = c ? `<div class="facts"><span>In Charleston County: ${c.total ? c.ranked.slice(0, 2).map(x => `<b style="color:${pc(x.party)}">${esc(x.name.split(' / ')[0])} ${pct(x.votes / c.total)}</b>`).join(' · ') : '<b>no votes yet</b>'} (${c.pr} of ${c.tp} precincts)</span></div>`
+      cl = c ? `<div class="facts"><span>In Charleston County: ${c.total ? c.ranked.slice(0, 2).map(x => `<b style="color:${pc(x.party)}">${esc(x.name.split(' / ')[0])} ${pct(x.votes / c.total)}</b>`).join(' · ') : '<b>no votes yet</b>'} · <b>${repPct(c.pr, c.tp)}% reporting</b> (${c.pr} of ${c.tp} precincts)</span></div>`
              : `<div class="facts"><span>Charleston County numbers unavailable${extraErr ? ' (' + esc(extraErr) + ')' : ''}</span></div>`;
     }
     return `<div class="xcard"><div class="ch"><div><h3>${esc(e.title)}</h3><div class="meta">${esc(e.scope)}</div></div><span class="badge ${bcls}">${badge}</span></div>
+      <div class="repwrap">${repPill(m.pr, m.tp, m.total > 0)}</div>
       <div class="row">${rows}</div>
-      <div class="prog"><span style="width:${m.tp ? m.pr / m.tp * 100 : 0}%"></span></div>
-      <div class="facts"><span>Precincts counted <b>${fmt(m.pr)} of ${fmt(m.tp)}</b> (${m.tp ? pct(m.pr / m.tp, 0) : '0%'})</span><span>Votes counted <b>${fmt(m.total)}</b></span></div>
+      <div class="facts"><span>Votes counted <b>${fmt(m.total)}</b></span></div>
       <div class="note">${note}</div>${cl}</div>`;
   }).join('');
   document.getElementById('extras').innerHTML = view === 'local' ? '' : html;
@@ -723,10 +741,9 @@ function card(r) {
   return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}${fresh ? ' fresh' : ''}" id="card-${r.hd}">
     <div class="ch"><div><h3>HD ${r.hd}${PINNED.includes(r.hd) ? ' <span class="pin">Pinned</span>' : ''}${fresh ? ' <span class="newtag">Just updated</span>' : ''}</h3><div class="meta">${esc(r.region)} · ${meta}</div></div>
     <span class="badge b-${r.status}">${STATUS[r.status].label}</span></div>
+    ${r.unopposed ? '' : `<div class="repwrap">${repPill(r.pr, r.tp, r.total > 0)}</div>`}
     <div class="row">${line(r.dem, 'dem')}${line(r.opp, 'rep')}${bar}</div>
-    <div class="prog"><span style="width:${r.share * 100}%"></span></div>
-    <div class="facts"><span>Precincts counted <b>${r.pr} of ${r.tp}</b> (${pct(r.share, 0)})</span>
-      <span>Margin <b>${r.total ? pts(r.margin) : '–'}</b></span><span>Baseline <b>${pts(r.base)}</b></span>
+    <div class="facts">      <span>Margin <b>${r.total ? pts(r.margin) : '–'}</b></span><span>Baseline <b>${pts(r.base)}</b></span>
       <span>Early-vote lean <b>${pct(r.ev, 0)} D</b></span><span>Votes counted <b>${fmt(r.total)}</b></span></div>
     ${trend}<div class="note">${characterize(r)}</div>${ctable}</div>`;
 }
@@ -804,7 +821,7 @@ function tableHTML() {
       <td class="num" style="color:var(--dem)">${dp}</td>
       <td class="num"><b>${r.total && !r.unopposed ? pts(r.margin) : '–'}</b></td>
       <td class="num" style="color:${sw === null ? 'inherit' : sw >= 0 ? 'var(--dem)' : 'var(--rep)'}">${sw === null ? '–' : (sw >= 0 ? '+' : '−') + Math.abs(sw * 100).toFixed(1)}</td>
-      <td>${r.unopposed ? '' : `<span class="pbar"><span style="width:${r.share * 100}%"></span></span>${pct(r.share, 0)}`}</td>
+      <td>${r.unopposed ? '<span class="meta">no race</span>' : `<span class="pbar${r.allIn ? ' full' : ''}"><span style="width:${repPct(r.pr, r.tp)}%"></span></span><b>${repPct(r.pr, r.tp)}%</b>${r.total && !r.pr ? '<span class="meta" title="Votes in, but no precinct fully reported yet: early/absentee votes">*</span>' : ''}`}</td>
       <td><span class="badge b-${r.status}">${STATUS[r.status].label}</span></td>
       <td>${r.incParty === 'D' ? '<b style="color:var(--dem)">D</b>' : '<b style="color:var(--rep)">R</b>'}</td></tr>`;
   }).join('');
@@ -816,9 +833,9 @@ function tableHTML() {
       <select id="treg" aria-label="Region"><option value="all">All regions</option>${REGIONS.map(x => `<option${tableRegion === x ? ' selected' : ''}>${x}</option>`).join('')}</select>
       <select id="theld" aria-label="Held by"><option value="all">Held by either party</option><option value="R"${tableHeld === 'R' ? ' selected' : ''}>Rep-held seats</option><option value="D"${tableHeld === 'D' ? ' selected' : ''}>Dem-held seats</option></select>
       <input id="tq" type="search" placeholder="Search district, county or candidate" value="${esc(tableQuery)}" style="flex:1;min-width:180px;font:inherit;padding:5px 10px;border:1px solid var(--line);border-radius:8px">
-      <span class="meta">${list.length} of 124 · click any column to sort</span>
+      <span class="meta">${list.length} of 124 · click any column to sort · * = early/absentee votes only</span>
     </div>
-    <div class="tablewrap"><table class="house"><thead><tr>${th('hd', 'HD')}${th('area', 'Counties')}${th('dem', 'Democrat')}${th('opp', 'Opponent')}${th('dpct', 'D %', 'num')}${th('margin', 'Margin', 'num')}${th('swing', 'vs base', 'num', 'Dem margin now minus the district 2020-24 baseline: + means Democrats are running ahead of it')}${th('counted', 'Counted')}${th('status', 'Status')}${th('held', 'Held', '', 'Party holding the seat today')}</tr></thead>
+    <div class="tablewrap"><table class="house"><thead><tr>${th('hd', 'HD')}${th('area', 'Counties')}${th('dem', 'Democrat')}${th('opp', 'Opponent')}${th('dpct', 'D %', 'num')}${th('margin', 'Margin', 'num')}${th('swing', 'vs base', 'num', 'Dem margin now minus the district 2020-24 baseline: + means Democrats are running ahead of it')}${th('counted', 'Reporting', '', 'Share of precincts fully reported')}${th('status', 'Status')}${th('held', 'Held', '', 'Party holding the seat today')}</tr></thead>
     <tbody>${rows || '<tr><td colspan="10" class="meta">No races match these choices.</td></tr>'}</tbody></table></div>`;
 }
 
