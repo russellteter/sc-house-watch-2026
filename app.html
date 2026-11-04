@@ -341,7 +341,7 @@ const TRAILS = /*TRAILS*/{};
 const STATE_SNAPSHOT = /*STATE_SNAPSHOT*/null;
 // Election is over: the state's final posting is baked in and the page no longer calls the state's servers
 const FINAL_DATA = /*FINAL*/null;
-let stateDown = null;
+let stateDown = null, selfTesting = false;
 // Area label = sheet region + the counties the state lists for the race (the sheet mislabels HD 28, 39 and 44)
 HOUSE.forEach(h => { h.region = `${h.region.split('/')[0].trim()} / ${h.counties.join(', ')}`; });
 const SEATS = 124, MAJ = 63, SUPER = 83, D_BREAK = SEATS - SUPER + 1; // 42
@@ -743,7 +743,7 @@ function render() {
 // which equals Democrats reaching 42 only if no third-party candidate wins a seat.
 function verdict(T) {
   const short = T.Rproj - (SUPER - 1); // projected Republican seats above 82 = seats they still need to lose
-  if (FINAL_DATA && !DEMO) return {state: T.Rproj >= SUPER ? 'rclinch' : 'broken', cls: T.Rproj >= SUPER ? 'bad' : 'good', head: `Final: Democrats ${T.Dproj}, Republicans ${T.Rproj}. Republicans ${T.Rproj >= SUPER ? 'keep' : 'lose'} the two-thirds supermajority (${SUPER} seats needed)${T.recount ? `; ${T.recount} race${T.recount === 1 ? ' is' : 's are'} within the automatic-recount margin` : ''}.`};
+  if (FINAL_DATA && !DEMO && !selfTesting) return {state: T.Rproj >= SUPER ? 'rclinch' : 'broken', cls: T.Rproj >= SUPER ? 'bad' : 'good', head: `Final: Democrats ${T.Dproj}, Republicans ${T.Rproj}. Republicans ${T.Rproj >= SUPER ? 'keep' : 'lose'} the two-thirds supermajority (${SUPER} seats needed)${T.recount ? `; ${T.recount} race${T.recount === 1 ? ' is' : 's are'} within the automatic-recount margin` : ''}.`};
   if (T.Rwon >= SUPER) return {state:'rclinch', cls:'bad', head:`Republicans have clinched the supermajority: ${T.Rwon} seats won, ${SUPER} needed.`};
   if (T.Rmax < SUPER) return {state:'broken', cls:'good', head:`The supermajority is broken: Republicans can now win at most ${T.Rmax} seats, below the ${SUPER} they need.`};
   if (!T.anyVotes) return {state:'none', cls:'', head:`No votes counted yet. Republicans hold ${HELD_R} seats today; Democrats need ${D_BREAK} seats, a net gain of ${D_BREAK - HELD_D}, to break the supermajority.`};
@@ -1166,7 +1166,8 @@ function renderSenateInner() {
   const bullets = [];
   if (!m.total) bullets.push('No votes counted yet.');
   else {
-    bullets.push(`<b>${esc(leader.name)}</b> leads by <b>${fmt(leader.votes - second.votes)}</b> votes (${(lead * 100).toFixed(1)} pts), with about <b>${expPct(m.ballots)}%</b> of the expected statewide vote counted and <b>${repPct(m.pr, m.tp)}%</b> of precincts complete (${fmt(m.pr)} of ${fmt(m.tp)}; ${fmt(m.pp)} more partly counted).`);
+    bullets.push(m.allIn ? `<b>${esc(leader.name)}</b> wins by <b>${fmt(leader.votes - second.votes)}</b> votes (${(lead * 100).toFixed(1)} pts) with all ${fmt(m.tp)} precincts complete; ${fmt(m.total)} votes counted.`
+      : `<b>${esc(leader.name)}</b> leads by <b>${fmt(leader.votes - second.votes)}</b> votes (${(lead * 100).toFixed(1)} pts), with ${m.ballots ? `about <b>${expPct(m.ballots)}%</b> of the expected statewide vote counted and ` : ''}<b>${repPct(m.pr, m.tp)}%</b> of precincts complete (${fmt(m.pr)} of ${fmt(m.tp)}; ${fmt(m.pp)} more partly counted).`);
     const edS = share(svD[0], svR[0]), evS = share(svD[1], svR[1]), mlS = share(svD[2], svR[2]);
     if (evS !== null) bullets.push(`Among <b>early votes</b> counted so far (${fmt(sv[1])}): ${evS >= 0 ? 'Andrews' : 'Graham'} ${pts(evS).replace(/^[DR]\+/, '+')} pts${mlS !== null ? ` · <b>mail ballots</b> (${fmt(sv[2])}): ${mlS >= 0 ? 'Andrews' : 'Graham'} +${Math.abs(mlS * 100).toFixed(1)}` : ''}${edS !== null ? ` · <b>Election Day votes</b> (${fmt(sv[0])}): ${edS >= 0 ? 'Andrews' : 'Graham'} +${Math.abs(edS * 100).toFixed(1)}` : ' · <b>no Election Day votes counted yet</b>'}. ${sv[0] < sv[1] * 0.2 ? 'Election Day ballots are usually the Republican-leaning share of the vote, so expect the margin to tighten as they come in.' : ''}`);
     if (govM !== null) bullets.push(`Compared with the <b>Governor race on the same ballots</b>: Andrews is running ${Math.abs((senM - govM) * 100).toFixed(1)} pts ${senM >= govM ? 'ahead of' : 'behind'} Jermaine Johnson (D). ${Math.abs(senM - govM) >= 0.02 ? 'That gap is ticket-splitting, not turnout.' : 'The two Democrats are running about even.'}`);
@@ -1448,6 +1449,7 @@ function demoData(tick) {
 
 // ---------------- self-test (?selftest): checks the seat maths on scenarios with known answers ----------------
 function runSelfTest() {
+  selfTesting = true;
   const out = [], ok = (name, cond, got) => out.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : '  got: ' + JSON.stringify(got)}`);
   const dHeld = HOUSE.filter(h => h.incParty === 'D').map(h => h.hd), rHeld = HOUSE.filter(h => h.incParty === 'R').map(h => h.hd);
   const U = dHeld.filter(hd => hd !== 31).slice(0, 19); // 19 unopposed Democrats, as on tonight's ballot
@@ -1526,6 +1528,7 @@ function runSelfTest() {
     const h = HOUSE[0], rr = evalRace(h, m.summary[0], m.details[0]);
     ok('I all real precincts complete -> race counted as won, even though the county total includes failsafe/provisional', rr.final && rr.pr === 3 && rr.tp === 3, [rr.final, rr.pr, rr.tp]); }
   const fails = out.filter(l => l.startsWith('FAIL')).length;
+  selfTesting = false;
   const pre = document.createElement('pre'); pre.id = 'selftest'; pre.textContent = `SELF-TEST ${fails ? 'FAILED' : 'PASSED'}: ${out.length - fails} of ${out.length}\n` + out.join('\n');
   pre.style.cssText = 'background:#fff;border:2px solid ' + (fails ? '#DC2626' : '#059669') + ';padding:12px;border-radius:8px;white-space:pre-wrap';
   document.querySelector('.wrap').prepend(pre);
