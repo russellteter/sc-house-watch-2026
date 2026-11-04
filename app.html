@@ -257,7 +257,7 @@ footer a{color:var(--brand)}
 <header>
   <div>
     <h1>SC House Watch: can Democrats break the supermajority?</h1>
-    <p>All 124 State House seats, live · General election, 3 Nov 2026 · Unofficial results</p>
+    <p>All 124 State House seats · General election, 3 Nov 2026 · Final unofficial results (certification follows)</p>
   </div>
   <div class="status">
     <span class="dot" id="dot"></span><span id="stat">Loading…</span>
@@ -320,7 +320,7 @@ footer a{color:var(--brand)}
 </div>
 
 <footer>
-  Source: South Carolina Election Commission official results. Vote counts are read from all 46 county results pages, which post before the statewide rollup; any county page that fails to load or is behind falls back to the statewide numbers. Feeds: statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 2 minutes. All results are unofficial until certified.<br>
+  Source: South Carolina Election Commission official results. Vote counts are read from all 46 county results pages, which post before the statewide rollup; any county page that fails to load or is behind falls back to the statewide numbers. Feeds: statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read live through election night; the page now shows the state's final posting and no longer refreshes. All results are unofficial until certified.<br>
   <b>Seat math:</b> 124 seats; a majority is 63; a two-thirds supermajority is 83, so Democrats break it at 42 seats. "Held today" is each seat's current party from the "Challenge every seat 2026" sheet (89 Republican, 35 Democratic).<br>
   <b>Won</b> = every precinct counted, the state marked a winner, or the candidate has no opponent. <b>Leading</b> includes races within 3 points, credited to whoever is ahead right now. <b>Projected</b> = won + leading + seats with no votes counted yet, given to the party that holds them today.<br>
   "Reporting" = share of precincts fully counted; for a district it adds up each county's precincts for the district; SC reports absentee and early votes as their own precincts, so a district can jump in one batch. "Dem needs" assumes the remaining precincts are the same size as those counted, so treat it as rough. Baseline = average top-of-ticket Dem margin 2020–24 in the district.
@@ -339,6 +339,8 @@ const PREC = /*PRECINCTS*/{};
 const TRAILS = /*TRAILS*/{};
 // Last-resort copy of the statewide contest list (votes zeroed), used only if the statewide feed is down and nothing is cached
 const STATE_SNAPSHOT = /*STATE_SNAPSHOT*/null;
+// Election is over: the state's final posting is baked in and the page no longer calls the state's servers
+const FINAL_DATA = /*FINAL*/null;
 let stateDown = null;
 // Area label = sheet region + the counties the state lists for the race (the sheet mislabels HD 28, 39 and 44)
 HOUSE.forEach(h => { h.region = `${h.region.split('/')[0].trim()} / ${h.counties.join(', ')}`; });
@@ -502,6 +504,7 @@ async function load() {
   try {
     let summary, details, chsSum = null;
     if (DEMO) { demoTick++; ({summary, details, chsSum} = demoData(demoTick)); version = 'demo-' + demoTick; lastPosted = new Date().toUTCString(); }
+    else if (FINAL_DATA) { summary = FINAL_DATA.summary; details = FINAL_DATA.details; chsSum = FINAL_DATA.charleston; version = FINAL_DATA.version; lastPosted = FINAL_DATA.lastModified; countyInfo = null; stateDown = null; ({summary, details, stats: mergeStats} = mergeCounty(summary, details, {})); }
     else {
       try {
         [summary, details] = await loadFeed(ELECTION, ['json/en/summary.json', 'json/details.json']);
@@ -530,12 +533,14 @@ async function load() {
     const newest = lms.length ? ` · newest county posting ${tm(Math.max(...lms))} ET` : '';
     const roll = stateDown ? ` · statewide feed down (${stateDown}), running on county pages` : lastPosted && !isNaN(Date.parse(lastPosted)) ? ` · statewide rollup ${tm(Date.parse(lastPosted))}` : '';
     const cf = !countyInfo ? '' : countyInfo.total === 0 ? ' · using the state\'s final statewide results (county links no longer published)' : ` · ${countyInfo.total - countyInfo.fail.length} of ${countyInfo.total} county feeds read${countyInfo.fail.length ? ' (using the statewide numbers for ' + countyInfo.fail.join(', ') + ')' : ''}`;
-    setStat(`Checked ${tm(Date.now())} ET${newest}${roll}${cf}`, countyInfo && countyInfo.fail.length ? 'err' : 'live');
+    if (FINAL_DATA && !DEMO) setStat(`Final unofficial results · state's last posting ${tm(Date.parse(lastPosted))} ET, 4 Nov 2026 · live updating has stopped`, 'live');
+    else setStat(`Checked ${tm(Date.now())} ET${newest}${roll}${cf}`, countyInfo && countyInfo.fail.length ? 'err' : 'live');
   } catch (e) {
     console.error(e);
     setStat('Could not reach the results feed (' + e.message + '). Will retry.', 'err');
   }
-  nextAt = Date.now() + refreshMs();
+  nextAt = FINAL_DATA && !DEMO ? 0 : Date.now() + refreshMs();
+  if (FINAL_DATA && !DEMO) { document.getElementById('refresh').hidden = true; document.getElementById('next').textContent = ''; }
 }
 function setStat(t, cls) { document.getElementById('stat').textContent = t; document.getElementById('dot').className = 'dot ' + cls; }
 
@@ -731,13 +736,14 @@ function render() {
   document.getElementById('logsec').hidden = view === 'senate';
   document.getElementById('senate').hidden = view !== 'senate';
   if (view === 'senate') renderSenate();
-  document.title = `${unseen ? '● ' : ''}D ${T.Dproj} · R ${T.Rproj} projected | SC House Watch`;
+  document.title = `${unseen ? '● ' : ''}D ${T.Dproj} · R ${T.Rproj}${FINAL_DATA ? ' final' : ' projected'} | SC House Watch`;
 }
 
 // The supermajority is about Republican seats: it breaks when Republicans end below 83,
 // which equals Democrats reaching 42 only if no third-party candidate wins a seat.
 function verdict(T) {
   const short = T.Rproj - (SUPER - 1); // projected Republican seats above 82 = seats they still need to lose
+  if (FINAL_DATA && !DEMO) return {state: T.Rproj >= SUPER ? 'rclinch' : 'broken', cls: T.Rproj >= SUPER ? 'bad' : 'good', head: `Final: Democrats ${T.Dproj}, Republicans ${T.Rproj}. Republicans ${T.Rproj >= SUPER ? 'keep' : 'lose'} the two-thirds supermajority (${SUPER} seats needed)${T.recount ? `; ${T.recount} race${T.recount === 1 ? ' is' : 's are'} within the automatic-recount margin` : ''}.`};
   if (T.Rwon >= SUPER) return {state:'rclinch', cls:'bad', head:`Republicans have clinched the supermajority: ${T.Rwon} seats won, ${SUPER} needed.`};
   if (T.Rmax < SUPER) return {state:'broken', cls:'good', head:`The supermajority is broken: Republicans can now win at most ${T.Rmax} seats, below the ${SUPER} they need.`};
   if (!T.anyVotes) return {state:'none', cls:'', head:`No votes counted yet. Republicans hold ${HELD_R} seats today; Democrats need ${D_BREAK} seats, a net gain of ${D_BREAK - HELD_D}, to break the supermajority.`};
@@ -786,7 +792,7 @@ function renderScore(T) {
         </div>
         <div class="kline">Across the ${T.contested} contested House races: <b>${T.withVotes}</b> have votes in · <b>${T.fullIn}</b> fully counted · <b>${T.contested - T.withVotes}</b> nothing yet</div>
         ${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main ? vtLine(sen.main.vt, 'Statewide votes counted so far, by type') : ''; })()}
-        <div class="kline proj">Projected: <b style="color:var(--dem)">Democrats ${T.Dproj}</b> · <b style="color:var(--rep)">Republicans ${T.Rproj}</b>${T.Owon + T.Olead ? ` · other ${T.Owon + T.Olead}` : ''}<br><span class="meta">Seats decided ${T.decided} of ${SEATS}, including ${T.udem + T.urep} with no opponent · ${T.wait + T.toss} not yet decided</span></div>
+        <div class="kline proj">${FINAL_DATA ? 'Final' : 'Projected'}: <b style="color:var(--dem)">Democrats ${T.Dproj}</b> · <b style="color:var(--rep)">Republicans ${T.Rproj}</b>${T.Owon + T.Olead ? ` · other ${T.Owon + T.Olead}` : ''}<br><span class="meta">Seats decided ${T.decided} of ${SEATS}, including ${T.udem + T.urep} with no opponent · ${T.wait + T.toss} not yet decided</span></div>
       </div>
     </div>
     <div class="seatwrap">
@@ -800,7 +806,7 @@ function renderScore(T) {
         ${kv('Won (incl. ' + T.udem + ' with no opponent)', T.Dwon)}
         ${kv('Leading (' + tossD + ' by under 3 pts)', T.Dlead)}
         ${kv('No votes yet in seats they hold', T.waitD)}
-        ${kv('Projected seats', T.Dproj)}
+        ${kv(FINAL_DATA ? 'Seats won' : 'Projected seats', T.Dproj)}
         ${kv(`To break supermajority (${D_BREAK})`, dSuper, dSuperC)}
         ${kv(`To win majority (${MAJ})`, dMaj, dMajC)}
         ${kv('Held today', HELD_D)}
@@ -809,7 +815,7 @@ function renderScore(T) {
         ${kv('Won', T.Rwon)}
         ${kv('Leading (' + tossR + ' by under 3 pts)', T.Rlead)}
         ${kv('No votes yet in seats they hold', T.waitR)}
-        ${kv('Projected seats', T.Rproj)}
+        ${kv(FINAL_DATA ? 'Seats won' : 'Projected seats', T.Rproj)}
         ${kv(`To keep supermajority (${SUPER})`, T.Rproj > SUPER ? `${T.Rproj - SUPER} seat${T.Rproj - SUPER === 1 ? '' : 's'} to spare` : T.Rproj === SUPER ? 'exactly at the line' : rSuper, T.Rproj >= SUPER ? 'no' : 'ok')}
         ${kv(`Most seats still possible`, `${T.Rmax}${T.Rmax < SUPER ? ' (can no longer reach 83)' : ''}`, T.Rmax < SUPER ? 'ok' : '')}
         ${kv('Held today', HELD_R)}
