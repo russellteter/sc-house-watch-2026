@@ -214,6 +214,29 @@ details td:first-child,details th:first-child{text-align:left}
 .hmid{font:800 26px 'DM Sans',sans-serif;text-anchor:middle;fill:#475569;paint-order:stroke;stroke:#fff;stroke-width:5px}
 .hsub{font:600 11px 'DM Sans',sans-serif;text-anchor:middle;fill:#64748B;paint-order:stroke;stroke:#fff;stroke-width:4px}
 .hcap{font-size:12px;color:var(--muted);text-align:center;max-width:720px;margin:4px auto 0}
+
+.hdlink{cursor:pointer;border-bottom:1px dotted var(--brand)}.hdlink:hover{color:var(--brand)}
+.chr2{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.rbtn{font:600 11.5px 'DM Sans',sans-serif;color:var(--brand);background:#EEF2FF;border:0;border-radius:999px;padding:3px 9px;cursor:pointer}.rbtn:hover{background:#E0E7FF}
+.replay{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+.rpanel{background:var(--card);border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,.4);width:min(960px,100%);max-height:94vh;overflow:auto;padding:16px 18px 18px}
+.rhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.rhead h2{font-size:19px}.rhead .meta{margin-top:2px}
+.rclose{font:600 13px 'DM Sans',sans-serif;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer}
+.rchart{width:100%;height:auto;display:block;margin-top:10px}
+.rctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.rctl .play{font:700 13px 'DM Sans',sans-serif;background:var(--head);color:#fff;border:0;border-radius:8px;padding:7px 14px;cursor:pointer;min-width:84px}
+.rctl input[type=range]{flex:1;min-width:160px;accent-color:var(--brand)}
+.rctl .rt{font:700 15px 'DM Sans',sans-serif;min-width:84px;font-variant-numeric:tabular-nums}
+.rctl .spd{font-size:12px;color:var(--muted)}.rctl .spd button{padding:2px 7px;font-size:12px;margin-left:3px}
+.rread{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 16px;margin-top:12px;padding:10px 12px;background:var(--soft);border-radius:10px}
+.rread .k{font-size:11.5px;color:var(--muted)}.rread .v{font:700 20px/1.2 'DM Sans',sans-serif}
+.rread .v.d{color:var(--dem)}.rread .v.r{color:var(--rep)}
+.rev{margin-top:12px}.rev h3{font-size:13px;color:var(--muted);font-weight:600}
+.rev ol{list-style:none;margin:6px 0 0;padding:0;max-height:200px;overflow:auto}
+.rev li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px;opacity:.35;transition:opacity .25s}
+.rev li.on{opacity:1}.rev li time{color:var(--muted);font-variant-numeric:tabular-nums}
+.rev li.good span{color:var(--flip);font-weight:600}.rev li.bad span{color:var(--rep);font-weight:600}
 footer{margin-top:24px;color:var(--muted);font-size:12px;line-height:1.6}
 footer a{color:var(--brand)}
 </style>
@@ -244,6 +267,7 @@ footer a{color:var(--brand)}
 
 <section id="senate" class="senate" hidden></section>
 <template id="countysvg"><!--COUNTYSVG--></template>
+<div id="replay" class="replay" hidden></div>
 
 <section class="log" id="logsec">
   <h2>Latest changes <span class="sub" id="logsub"></span></h2>
@@ -301,6 +325,8 @@ const refreshMs = () => 2 * 60 * 1000; // every 2 minutes for election night
 const HOUSE = /*HOUSE*/[];
 // For each county and county contest id: the precincts in that race (fetched from the county pages at build time; failsafe/provisional excluded)
 const PREC = /*PRECINCTS*/{};
+// Vote trail for every House race as recorded through election night (time, Dem, opponent, other, precincts complete, total precincts, status)
+const TRAILS = /*TRAILS*/{};
 // Last-resort copy of the statewide contest list (votes zeroed), used only if the statewide feed is down and nothing is cached
 const STATE_SNAPSHOT = /*STATE_SNAPSHOT*/null;
 let stateDown = null;
@@ -835,7 +861,7 @@ function setupMap() {
   svg.removeAttribute('width'); svg.removeAttribute('height');
   for (const h of HOUSE) {
     const p = document.getElementById('house-' + h.hd); if (!p) continue;
-    p.addEventListener('click', () => { if (!dragMoved) select(h.hd, true); });
+    p.addEventListener('click', () => { if (!dragMoved) { select(h.hd, true); if (!expanded) openReplay(h.hd); } });
     const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
     p.appendChild(title);
     if (TARGET_HDS.includes(h.hd)) { p.classList.add('t'); p.parentNode.appendChild(p); }
@@ -922,7 +948,7 @@ function setupPanZoom() {
     if (!expanded && !e.ctrlKey && !e.metaKey) return;
     e.preventDefault(); zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), at(e.clientX, e.clientY));
   }, {passive: false});
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && expanded) setExpanded(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (replayHd) closeReplay(); else if (expanded) setExpanded(false); } });
 }
 
 function renderExtras() {
@@ -980,8 +1006,8 @@ function card(r) {
   const trend = lc || sp ? `<div class="trend">${sp}<span>${lc ? describeChange(lc) : ''}</span></div>` : '';
   const meta = r.hd === 115 ? `Open seat, Dem-held (was ${esc(r.inc)}) · defend` : `Incumbent ${esc(r.inc)} (${r.incParty})${r.incParty === 'D' ? ' · defend' : ''}`;
   return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}${fresh ? ' fresh' : ''}" id="card-${r.hd}">
-    <div class="ch"><div><h3>HD ${r.hd}${PINNED.includes(r.hd) ? ' <span class="pin">Pinned</span>' : ''}${fresh ? ' <span class="newtag">Just updated</span>' : ''}</h3><div class="meta">${esc(r.region)} · ${meta}</div></div>
-    <span class="badge b-${r.status}">${STATUS[r.status].label}</span></div>
+    <div class="ch"><div><h3><span class="hdlink" data-replay="${r.hd}" title="Replay how this race came in">HD ${r.hd}</span>${PINNED.includes(r.hd) ? ' <span class="pin">Pinned</span>' : ''}${fresh ? ' <span class="newtag">Just updated</span>' : ''}</h3><div class="meta">${esc(r.region)} · ${meta}</div></div>
+    <div class="chr2"><span class="badge b-${r.status}">${STATUS[r.status].label}</span>${r.unopposed ? '' : `<button class="rbtn" data-replay="${r.hd}">▶ Replay the night</button>`}</div></div>
     ${r.unopposed ? '' : `<div class="repwrap">${repPill(r.pr, r.tp, r.total > 0, r.pp)}${vtLine(r.vt)}</div>`}
     <div class="row">${line(r.dem, 'dem')}${line(r.opp, 'rep')}${bar}</div>
     <div class="facts">      <span>Margin <b>${r.total ? pts(r.margin) : '–'}</b></span><span>Baseline <b>${pts(r.base)}</b></span>
@@ -1056,7 +1082,7 @@ function tableHTML() {
     const opp = r.unopposed ? '<span class="meta">no opponent</span>' : r.opp ? `<b style="color:${r.opp.party === 'REP' ? 'var(--rep)' : '#5B21B6'}">${plabel(r.opp.party)}</b> <span class="nm">${esc(r.opp.name)}</span>` : '–';
     const sw = r.total && !r.unopposed ? r.margin - r.base : null;
     return `<tr data-hd="${r.hd}" class="${selected === r.hd ? 'sel' : ''}${isFresh(r.hd) ? ' fresh' : ''}" id="row-${r.hd}">
-      <td><b>${r.hd}</b>${r.target ? `<span class="tg">${r.incParty === 'D' ? 'DEFEND' : 'KEY FLIP'}</span>` : ''}</td>
+      <td><b class="hdlink" data-replay="${r.hd}">${r.hd}</b>${r.target ? `<span class="tg">${r.incParty === 'D' ? 'DEFEND' : 'KEY FLIP'}</span>` : ''}</td>
       <td><span class="nm" style="max-width:80px" title="${esc(r.region)}">${esc(r.counties.join(', '))}</span></td>
       <td>${r.dem ? `<span class="nm">${esc(r.dem.name)}</span>` : '–'}</td><td>${opp}</td>
       <td class="num" style="color:var(--dem)">${dp}</td>
@@ -1210,6 +1236,114 @@ function seatChart(T) {
     <div class="hcap">Each dot is one seat, Democrats filling from the left and Republicans from the right. Dark = won · medium = leading · pale = leading by under 3 points · faint = no votes yet (shown with the party that holds it today). Hover a dot for the district; click to jump to it. Supermajority line: 83 seats; Democrats break it at 42.</div></div>`;
 }
 
+// ---------------- race replay (timeline) ----------------
+let replayHd = null, rpTimer = null, rpT = 0, rpSpeed = 1, rpPlaying = false, rpTrail = null;
+function trailFor(hd) {
+  const base = (TRAILS[hd] || []).map(a => a.slice());
+  const live = hist.map(s => [s.t, ...(s.r[hd] || [])]).filter(a => a.length === 7);
+  const all = [...base, ...live].sort((a, b) => a[0] - b[0]);
+  const out = []; let mx = 0, mpr = 0;
+  for (const a of all) {
+    const tot = a[1] + a[2] + a[3];
+    if (out.length && (tot < mx || a[4] < mpr)) continue; // stale read
+    if (out.length && out[out.length - 1].slice(1).join() === a.slice(1).join()) continue;
+    if (out.length && a[0] - out[out.length - 1][0] < 1000) continue;
+    out.push(a); mx = Math.max(mx, tot); mpr = Math.max(mpr, a[4]);
+  }
+  const tp = out.length ? out[out.length - 1][5] : 0; out.forEach(a => { a[5] = tp; a[4] = Math.min(a[4], tp); });
+  return out;
+}
+const rpM = a => (a[1] + a[2] + a[3]) ? (a[1] - a[2]) / (a[1] + a[2] + a[3]) : 0;
+function rpEvents(tr, r) {
+  const ev = [], dn = r.dem ? r.dem.name : 'Democrat', on = r.opp ? r.opp.name : 'opponent';
+  for (let i = 0; i < tr.length; i++) {
+    const a = tr[i], b = tr[i - 1], tot = a[1] + a[2] + a[3];
+    if (!tot) continue;
+    const m = rpM(a), lead = m >= 0 ? dn : on, gap = Math.abs(a[1] - a[2]);
+    if (!b || !(b[1] + b[2] + b[3])) { ev.push({t: a[0], txt: `First votes in: ${lead} leads by ${fmt(gap)} (${pts(m)}), ${a[4]} of ${a[5]} precincts complete. ${a[4] ? '' : 'Early and absentee ballots.'}`, kind: ''}); continue; }
+    const pm = rpM(b);
+    if (Math.sign(pm) !== Math.sign(m)) ev.push({t: a[0], txt: `Lead changes: ${lead} moves ahead, ${pts(m)} (${a[4]} of ${a[5]} precincts).`, kind: m > 0 ? 'good' : 'bad'});
+    else if (FINAL.includes(a[6]) && !FINAL.includes(b[6])) ev.push({t: a[0], txt: `${STATUS[a[6]].label}: ${lead} finishes ${pts(m)}, ${fmt(gap)} votes ahead.`, kind: ['flip', 'dhold'].includes(a[6]) ? 'good' : 'bad'});
+    else if (a[6] === 'toss' && b[6] !== 'toss') ev.push({t: a[0], txt: `Too close to call: ${lead} ${pts(m)} with ${a[4]} of ${a[5]} precincts complete.`, kind: ''});
+    else ev.push({t: a[0], txt: `+${fmt(tot - (b[1] + b[2] + b[3]))} votes, ${a[4]} of ${a[5]} precincts: ${lead} ${pts(m)} (was ${pts(pm)}).`, kind: ''});
+  }
+  return ev;
+}
+function openReplay(hd) {
+  const r = races && races.find(x => x.hd === hd); if (!r) return;
+  const tr = trailFor(hd); replayHd = hd; rpTrail = tr; rpPlaying = false; clearInterval(rpTimer);
+  const el = document.getElementById('replay'); el.hidden = false; document.body.classList.add('mapopen');
+  if (tr.length < 2 || !tr.some(a => a[1] + a[2] + a[3])) {
+    el.innerHTML = `<div class="rpanel"><div class="rhead"><div><h2>HD ${hd}: how the night went</h2><div class="meta">${esc(r.region)}</div></div><button class="rclose" data-rclose="1">Close ✕</button></div><p>No vote trail was recorded for this race${r.unopposed ? ' (no opponent on the ballot)' : ''}.</p></div>`;
+    return;
+  }
+  const t0 = tr.find(a => a[1] + a[2] + a[3])[0] - 10 * 60000, t1 = tr[tr.length - 1][0];
+  const ev = rpEvents(tr, r);
+  el.innerHTML = `<div class="rpanel">
+    <div class="rhead"><div><h2>HD ${hd}: how the night went</h2><div class="meta">${esc(r.region)} · ${r.dem ? `<b style="color:var(--dem)">${esc(r.dem.name)} (D)</b>` : ''} vs ${r.opp ? `<b style="color:var(--rep)">${esc(r.opp.name)} (${plabel(r.opp.party)})</b>` : ''} · final: <span class="badge b-${tr[tr.length - 1][6]}">${STATUS[tr[tr.length - 1][6]].label}</span></div></div><button class="rclose" data-rclose="1">Close ✕</button></div>
+    <svg class="rchart" viewBox="0 0 800 300" id="rsvg"></svg>
+    <div class="rctl"><button class="play" id="rplay">▶ Play</button><span class="rt" id="rtime"></span><input type="range" id="rscrub" min="0" max="1000" value="0"><span class="spd">Speed <button data-spd="0.5">½×</button><button data-spd="1" class="on">1×</button><button data-spd="2">2×</button></span></div>
+    <div class="rread" id="rread"></div>
+    <div class="rev"><h3>What happened</h3><ol id="rev">${ev.map(e => `<li data-t="${e.t}" class="${e.kind}"><time>${tm(e.t)}</time><span>${e.txt}</span></li>`).join('')}</ol></div>
+  </div>`;
+  el.dataset.t0 = t0; el.dataset.t1 = t1;
+  rpT = t1; rpDraw(); // start showing the end state, press play to replay
+}
+function closeReplay() { replayHd = null; rpPlaying = false; clearInterval(rpTimer); const el = document.getElementById('replay'); el.hidden = true; el.innerHTML = ''; if (!expanded) document.body.classList.remove('mapopen'); }
+function rpDraw() {
+  const el = document.getElementById('replay'), tr = rpTrail; if (!tr || el.hidden) return;
+  const t0 = +el.dataset.t0, t1 = +el.dataset.t1, W = 800, H = 300, L = 56, Rm = 16, top = 14, vh = 160, mh = 70, my = top + vh + 28;
+  const tEnd = t1 + (t1 - t0) * 0.09, X = t => L + (t - t0) / (tEnd - t0) * (W - L - Rm);
+  const vmax = Math.max(1, ...tr.map(a => Math.max(a[1], a[2]))) * 1.08, Y = v => top + vh - v / vmax * vh;
+  const mmax = Math.max(0.05, ...tr.map(a => Math.abs(rpM(a)))), MY = m => my + mh / 2 - m / mmax * (mh / 2);
+  const upto = tr.filter(a => a[0] <= rpT); const cur = upto[upto.length - 1] || tr[0];
+  const step = (idx, col) => { let d = ''; tr.forEach((a, i) => { const x = X(a[0]), y = Y(a[idx]); d += (i ? `H${x.toFixed(1)}V${y.toFixed(1)}` : `M${x.toFixed(1)} ${y.toFixed(1)}`); }); d += `H${X(t1).toFixed(1)}`; return `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>`; };
+  const ticks = []; for (let t = Math.ceil(t0 / 3600000) * 3600000; t <= t1; t += 3600000) ticks.push(t);
+  const leadChanges = tr.filter((a, i) => i && (a[1] + a[2] + a[3]) && (tr[i - 1][1] + tr[i - 1][2] + tr[i - 1][3]) && Math.sign(rpM(a)) !== Math.sign(rpM(tr[i - 1])));
+  const px = X(Math.min(rpT, t1));
+  const mbars = tr.map((a, i) => { const m = rpM(a), x0 = X(a[0]), x1 = X(i + 1 < tr.length ? tr[i + 1][0] : t1); if (!(a[1] + a[2] + a[3])) return ''; return `<rect x="${x0.toFixed(1)}" y="${Math.min(MY(m), MY(0)).toFixed(1)}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${Math.abs(MY(m) - MY(0)).toFixed(1)}" fill="${m >= 0 ? '#3B82F6' : '#DC2626'}" opacity=".85"/>`; }).join('');
+  document.getElementById('rsvg').innerHTML = `
+    <defs><clipPath id="rclip"><rect x="0" y="0" width="${px.toFixed(1)}" height="${H}"/></clipPath></defs>
+    ${ticks.map(t => `<line x1="${X(t)}" x2="${X(t)}" y1="${top}" y2="${my + mh}" stroke="#E2E8F0"/><text x="${X(t)}" y="${my + mh + 14}" font-size="10" fill="#64748B" text-anchor="middle">${tm(t)}</text>`).join('')}
+    ${[0.25, 0.5, 0.75, 1].map(f => `<line x1="${L}" x2="${W - Rm}" y1="${Y(vmax * f)}" y2="${Y(vmax * f)}" stroke="#F1F5F9"/><text x="${L - 6}" y="${Y(vmax * f) + 3}" font-size="10" fill="#94A3B8" text-anchor="end">${fmt(Math.round(vmax * f))}</text>`).join('')}
+    <text x="${L}" y="${top - 2}" font-size="10" fill="#64748B">Votes counted</text>
+    <text x="${L}" y="${my - 6}" font-size="10" fill="#64748B">Margin (blue = Democrat ahead, red = opponent ahead)</text>
+    <line x1="${L}" x2="${W - Rm}" y1="${MY(0)}" y2="${MY(0)}" stroke="#CBD5E1"/>
+    <g clip-path="url(#rclip)">${mbars}${step(2, '#DC2626')}${step(1, '#3B82F6')}</g>
+    ${leadChanges.map(a => `<line x1="${X(a[0])}" x2="${X(a[0])}" y1="${top}" y2="${my + mh}" stroke="#0F172A" stroke-dasharray="3 3" opacity="${a[0] <= rpT ? 1 : .25}"/><text x="${X(a[0]) + (X(a[0]) > W * 0.78 ? -4 : 4)}" y="${my - 18}" font-size="10" font-weight="700" fill="#0F172A" text-anchor="${X(a[0]) > W * 0.78 ? 'end' : 'start'}" opacity="${a[0] <= rpT ? 1 : .25}">lead change ${tm(a[0])}</text>`).join('')}
+    <line x1="${px}" x2="${px}" y1="${top}" y2="${my + mh}" stroke="#6366F1" stroke-width="2"/>
+    <circle cx="${px}" cy="${Y(cur[1])}" r="4.5" fill="#3B82F6" stroke="#fff" stroke-width="2"/><circle cx="${px}" cy="${Y(cur[2])}" r="4.5" fill="#DC2626" stroke="#fff" stroke-width="2"/>
+    <text x="${X(t1) + 6}" y="${Y(tr[tr.length - 1][1]) + (tr[tr.length - 1][1] >= tr[tr.length - 1][2] ? -5 : 13)}" font-size="11" font-weight="700" fill="#1E40AF">D ${fmt(tr[tr.length - 1][1])}</text>
+    <text x="${X(t1) + 6}" y="${Y(tr[tr.length - 1][2]) + (tr[tr.length - 1][2] > tr[tr.length - 1][1] ? -5 : 13)}" font-size="11" font-weight="700" fill="#991B1B">${tr.length && races.find(x => x.hd === replayHd).opp ? plabel(races.find(x => x.hd === replayHd).opp.party) : 'R'} ${fmt(tr[tr.length - 1][2])}</text>`;
+  const tot = cur[1] + cur[2] + cur[3], m = rpM(cur), r = races.find(x => x.hd === replayHd);
+  document.getElementById('rtime').textContent = tm(Math.min(rpT, t1));
+  document.getElementById('rscrub').value = Math.round((Math.min(rpT, t1) - t0) / (t1 - t0) * 1000);
+  document.getElementById('rread').innerHTML = `
+    <div><div class="k">${esc(r.dem ? r.dem.name : 'Democrat')} (D)</div><div class="v d">${tot ? pct(cur[1] / tot) : '–'} <span style="font-size:13px;color:var(--muted)">${fmt(cur[1])}</span></div></div>
+    <div><div class="k">${esc(r.opp ? r.opp.name : 'Opponent')} (${r.opp ? plabel(r.opp.party) : 'R'})</div><div class="v r">${tot ? pct(cur[2] / tot) : '–'} <span style="font-size:13px;color:var(--muted)">${fmt(cur[2])}</span></div></div>
+    <div><div class="k">Margin</div><div class="v" style="color:${!tot ? 'inherit' : m >= 0 ? 'var(--dem)' : 'var(--rep)'}">${tot ? pts(m) : '–'}</div></div>
+    <div><div class="k">Precincts complete</div><div class="v">${cur[4]} <span style="font-size:13px;color:var(--muted)">of ${cur[5]}</span></div></div>
+    <div><div class="k">Status</div><div class="v" style="font-size:13px;padding-top:4px"><span class="badge b-${cur[6]}">${STATUS[cur[6]].label}</span></div></div>`;
+  document.querySelectorAll('#rev li').forEach(li => li.classList.toggle('on', +li.dataset.t <= rpT));
+  document.getElementById('rplay').textContent = rpPlaying ? '❚❚ Pause' : (rpT >= t1 ? '↻ Replay' : '▶ Play');
+}
+function rpTick() {
+  const el = document.getElementById('replay'); if (!el || el.hidden || !rpPlaying) { clearInterval(rpTimer); return; }
+  const t0 = +el.dataset.t0, t1 = +el.dataset.t1, now = Date.now();
+  const dur = 12000 / rpSpeed; // whole night in 12 seconds at 1x
+  if (!rpTick.last) rpTick.last = now;
+  rpT += (now - rpTick.last) / dur * (t1 - t0); rpTick.last = now;
+  if (rpT >= t1) { rpT = t1; rpPlaying = false; clearInterval(rpTimer); }
+  rpDraw();
+}
+document.addEventListener('click', ev => {
+  const t = ev.target;
+  if (t.closest('[data-rclose]') || (t.id === 'replay')) return closeReplay();
+  if (t.id === 'rplay') { const el = document.getElementById('replay'), t0 = +el.dataset.t0, t1 = +el.dataset.t1; if (rpPlaying) { rpPlaying = false; rpDraw(); return; } if (rpT >= t1) rpT = t0; rpPlaying = true; rpTick.last = 0; clearInterval(rpTimer); rpTimer = setInterval(rpTick, 40); rpDraw(); return; }
+  const sp = t.closest('[data-spd]'); if (sp) { rpSpeed = +sp.dataset.spd; document.querySelectorAll('[data-spd]').forEach(b => b.classList.toggle('on', b === sp)); }
+});
+document.addEventListener('input', ev => { if (ev.target.id === 'rscrub') { const el = document.getElementById('replay'), t0 = +el.dataset.t0, t1 = +el.dataset.t1; rpPlaying = false; rpT = t0 + ev.target.value / 1000 * (t1 - t0); rpDraw(); } });
+
 // ---------------- interaction ----------------
 function setView(v) {
   view = v; selected = null; if (v !== 'senate') senSort = senSort || 'margin';
@@ -1237,6 +1371,8 @@ document.addEventListener('click', ev => {
   const f = t.closest('[data-filter]'); if (f) { tableFilter = f.dataset.filter; savePrefs(); return render(); }
   const pr = t.closest('[data-preset]'); if (pr) { const p = PRESETS.find(x => x[0] === pr.dataset.preset)[2]; tableFilter = p.filter; tableHeld = p.held; tableRegion = p.region; tableSort = p.sort; tableDir = p.dir; savePrefs(); return render(); }
   const s = t.closest('th[data-sort]'); if (s) { const k = s.dataset.sort; if (tableSort === k) tableDir = -tableDir; else { tableSort = k; tableDir = SORTS[k].dir; } savePrefs(); return render(); }
+  const rp = t.closest('[data-replay]'); if (rp) { return openReplay(+rp.dataset.replay); }
+  const sd = t.closest('circle.seat'); if (sd) { const hd = +sd.dataset.hd; selected = null; select(hd, false); return openReplay(hd); }
   const hdEl = t.closest('[data-hd]'); if (hdEl && !t.closest('svg')) { const hd = +hdEl.dataset.hd; selected = null; return select(hd, false); }
 });
 document.addEventListener('change', ev => {
