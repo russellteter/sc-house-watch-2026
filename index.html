@@ -84,6 +84,18 @@ button.on{background:var(--head);color:#fff;border-color:var(--head)}
 .mapcard path.sel{stroke:#6366F1;stroke-width:3}
 .mapcard path:hover{stroke:#0F172A;stroke-width:2}
 .maplabel{font-family:'DM Sans',sans-serif;font-weight:700;fill:#0F172A;paint-order:stroke;stroke:#fff;pointer-events:none}
+.mapview{position:relative}
+.mapctl{position:absolute;top:6px;right:6px;display:flex;gap:4px;align-items:center;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 1px 4px rgba(15,23,42,.08)}
+.mapctl button{padding:3px 9px;font:600 13px 'DM Sans',sans-serif;min-width:30px}
+.mapctl .zl{font-size:12px;color:var(--muted);min-width:34px;text-align:center;font-variant-numeric:tabular-nums}
+.maphint{font-size:11.5px;color:var(--muted);margin-top:6px}
+.mapinfo{margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff}
+.mapcard svg{touch-action:manipulation;cursor:grab}.mapcard svg.panning{cursor:grabbing}
+.mapcard.expanded{position:fixed;inset:12px;z-index:60;margin:0;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(15,23,42,.35)}
+.mapcard.expanded .mapview{flex:1;min-height:0}
+.mapcard.expanded svg{width:100%;height:100%;max-height:none;touch-action:none}
+body.mapopen{overflow:hidden}
+body.mapopen::before{content:'';position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:59}
 .zoom{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted);margin-bottom:8px}
 .zoom button{padding:4px 10px;font-size:12px}
 .legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);margin-top:8px}
@@ -202,7 +214,7 @@ footer a{color:var(--brand)}
         <button data-zoom="upstate">Greenville / Spartanburg</button>
         <button data-zoom="horry">Myrtle Beach</button>
       </div>
-      <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width="800" height="531" viewBox="0 0 800 531" stroke-linecap="round" stroke-linejoin="round">
+      <div class="mapview"><svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width="800" height="531" viewBox="0 0 800 531" stroke-linecap="round" stroke-linejoin="round">
 <g id="tl_2024_45_sldl">
 <path d="M 385.61 215.87 385.25 215.39 385.71 214.93 386.38 214.95 387.38 215.3 388.58 215.27 389.61 214.55 390.08 213.75 390.76 213.59 391.48 211.11 390.58 210.47 389.77 209.31 391.01 207.98 391.23 206.88 392.03 207.31 395.03 208.21 397.2 206.42 396.75 205.83 396.78 204.71 398.41 204.79 398.89 205.78 399.47 206.16 399.3 206.57 399.67 207.31 399.41 207.96 400.24 208.21 402.48 209.35 402.2 210.33 411.36 213.04 432.39 219.23 432.72 216.53 433.36 215.38 433.23 215.14 436.95 215.99 436.66 214.67 436.02 213.38 435.82 212.44 435.76 210.75 435.19 210.33 435.5 209.34 436.22 208.67 436.65 207.99 436.47 207.36 436.64 190.43 436.84 189.82 437.93 188.38 438.43 187.44 438.57 186.65 439.28 169.69 437.79 170.49 435.89 172.28 434.37 171.77 432.62 171.68 431.54 171.93 430.25 171.88 428.6 171.11 428.13 169.98 428.52 169.26 428.6 167.79 428.26 167.2 428.75 166.69 428.54 166.17 427.68 166.3 426.96 163.38 425.79 163.35 423.76 163.12 422.05 161.92 420.87 161.63 418.62 160.77 417.5 159.89 417.08 158.83 416.99 157.21 417.47 156.14 421.67 156.63 423.11 157.01 426.04 158.5 428.32 159.26 428.74 159.49 430.01 161.16 430.74 160.8 431.38 161.45 432.28 160.79 433.97 161.3 435.2 160.73 435.34 160 436.47 159.57 436.85 159.17 437.77 158.94 439.85 159.26 440.32 159.14 441.93 157.94 440.13 156.43 439.84 155.88 439.79 151.84 440.36 150.69 440.19 150.08 441.04 149.65 441.65 148.94 442.4 148.72 443.31 148.9 444.44 148.32 445.54 148.22 446.49 148.78 447.7 148.22 450.67 148.1 451.33 148.58 452.67 148.82 453.68 149.07 455.57 148.99 456.62 148.77 458.38 148.08 459.84 146.59 459.99 146.07 460.61 145.73 461.51 146.78 463.27 147.44 463.62 148 463.62 148.73 462.14 152.05 457.13 159.67 456.56 160.01 457.35 160.95 457.81 161.12 460.06 161.45 459.76 163.47 460.12 164.15 460 165.64 451.2 164.68 450.08 164.73 449.02 165.21 450.62 165.68 452.1 165.76 452.82 166.12 452.96 166.92 452.34 167.56 451.88 168.48 451.22 168.54 450.53 167.26 449.8 167.12 448.6 167.33 448.15 167.79 447.97 168.85 448.29 169.77 449.64 170.21 450.54 170.66 451.2 170.68 451.77 169.66 452.57 169.99 452.81 170.56 452.67 171.8 452.26 172.36 451.18 172.83 450.45 172.76 450.11 172.25 449.51 172.43 449.64 173.76 450.61 174.71 450.83 175.79 449.86 176.14 449.47 177.15 447.99 177.3 447.92 177.86 447.22 178.17 447.97 179.11 447.57 179.76 446.68 179.78 446.03 179.53 445.51 180.2 448.87 182.14 449.41 181.87 449.52 181.35 450.26 181.07 450.77 181.37 450.94 182.47 450.38 183.12 450.3 183.94 451.07 184.4 451.14 184.87 450.67 185.65 449.7 186.1 448.39 186.08 447.71 187.13 448.19 187.89 449.35 188.04 449.74 187.32 450.57 187.34 450.19 188.13 449.21 189.13 448.88 189.82 449.64 189.91 450.48 190.37 451.57 190.35 451.33 191.04 451.62 191.54 451.73 192.68 452.43 193.18 452.57 193.76 453.56 194.3 453.55 194.87 453.01 195.13 452.4 195.96 452.98 196.89 451.32 196.65 450.65 198.03 450.06 198.51 449.11 198.82 449.56 200.16 449.25 200.28 447.98 199.46 447.61 199.96 447.9 200.54 446.98 200.87 446.09 200.83 446.33 201.44 446.95 201.37 447.24 202.31 446.49 202.56 446.96 203.52 448.71 204.76 448.57 205.76 448.23 206.2 448.96 206.57 449.89 205.99 451.13 206.45 451.21 206.95 450.25 207.25 449.64 208.63 449.07 209.19 448.94 210.35 450.41 210.24 450.02 210.78 450.31 211.31 448.77 211.89 449.41 212.3 448.37 213.33 448.66 213.65 448.11 214.36 449.69 216.31 449.46 217.27 450.19 218.02 450.92 217.95 451.17 218.74 450.57 219.08 449.47 219.06 449.84 219.8 450.3 220.09 450.47 220.8 449.85 220.96 449.95 221.74 449.56 222.21 449.55 222.8 449.94 223.59 449.18 223.6 448.66 224.25 448.73 224.75 448.33 225.38 449.2 226.3 449.34 226.81 450.58 227.19 451.08 228.01 450.38 228.55 450.96 229.23 450.85 230.19 451.14 231.27 452.02 231.87 453.21 231.86 453.38 232.46 452.78 232.95 453.03 233.58 453.56 233.68 453.51 235.56 454.34 235.88 453.61 236.47 454.09 237.35 452.79 238.29 453.46 238.79 452.29 240.08 452.24 241.2 451.89 241.63 451.06 241.71 451.31 242.27 450.41 242.22 450.41 242.98 449.98 242.59 448.33 242.91 447.08 242.28 446.86 241.5 445.95 241.18 445.57 240.6 444.45 240 444.47 239.29 445.21 238.59 444.73 238.01 444.01 238.09 442.82 238.86 441.92 239.16 441.68 239.7 440.97 239.74 439.48 240.89 438.93 240.68 437.33 240.72 436.39 240.26 436.63 239.46 436.4 239.02 435.35 238.38 435.02 238.54 434.91 239.96 434.39 240.09 433.76 239.57 433.57 239.02 432.73 239.01 432.68 239.93 431.71 240.23 431.13 240.78 430.63 240.38 431.38 239.33 430.59 238.78 430.44 237.95 429.88 237.53 429.39 237.63 428.8 238.49 429.29 238.76 429.9 239.57 428.04 239.44 427.82 238.08 427.46 237.93 426.37 239.11 426.11 238.36 425.48 238.27 424.23 239.95 423.33 240.06 423.64 238.77 421.93 238.66 420.61 238.07 419.59 237.89 419.27 237.19 418.26 236.76 417.24 237.86 416.24 237.56 417.13 236.19 416.77 235.81 415.98 236.13 415.34 236.04 414.68 234.65 413.41 234.31 411.33 233.39 410.03 233.21 409.77 232.06 408.54 231.11 407.72 231.08 405.51 232.02 404.64 232.21 401.84 231.78 401.55 231.39 401.77 229.56 402.47 228.74 402.25 228.24 401.03 227.92 400.6 228.23 400.41 229.15 398.45 229.31 397.73 228.97 397.16 228.09 396.04 226.93 393.56 225.79 392.4 225.93 391.62 225.68 390.31 225.64 389.67 224.99 390.23 224.21 387.99 223.69 387.62 223.29 388.24 222.65 388.52 221.52 387.93 220.76 385.63 220.44 384.63 219.86 384.44 219.17 384.65 218.31 385.1 217.78 386.15 217.52 386.52 216.54 385.61 215.87 Z" id="house-70"/>
 <path d="M 335.86 161.41 336.94 161.82 338.23 161.62 339.2 161.75 341.25 162.46 342.22 163.02 343.06 164.14 343.65 164.3 344.85 165.62 345.33 166.42 346.65 167.41 347.53 167.25 350.74 166.96 351.49 167.4 352 168.42 353.7 168.83 354.62 169.59 356.37 170.62 357.25 171.31 358.65 172.08 359.34 172.36 361.04 173.57 362.35 173.87 363.59 175.02 364.09 175.82 364.24 176.59 365.42 178.85 363.53 179.18 362.85 179.48 363.34 181.02 363.91 181.17 363.97 182.02 362.99 181.94 361.5 182.38 361.36 183.08 361.58 183.59 361.58 184.91 359.24 184.48 358.57 183.86 357.85 184.43 357.12 184.59 357.37 185.54 354.78 184.8 351.25 184.21 349.58 184.04 346.24 183.98 344.87 184.13 342.61 184.76 340.56 181.45 339.55 181.77 339.76 182.94 341.51 183.74 341.32 184.26 341.71 184.99 340.9 185.72 339.72 185.37 339.38 186.05 338.2 185.14 336.92 183.49 335.19 181.75 334.83 181.18 333.79 178.79 334.54 178.11 335.49 177.92 336.41 177.24 336.17 176.75 336.73 175.38 338.27 174.08 336.34 170.21 335.58 170.28 335.15 169.75 333.81 169.47 333.14 168.72 332.23 168.29 331.19 167.07 333.91 163.4 335.86 161.41 Z" id="house-71"/>
@@ -330,6 +342,10 @@ footer a{color:var(--brand)}
 <path d="M 536.45 374.61 539.24 376.98 538.36 378.99 540.02 379.46 539.57 379.98 539.12 381.13 539.69 381.46 541.37 383.98 543.66 383.28 544.46 383.78 543.7 385.16 544.68 385.53 545.46 384.06 546.59 383.35 547.45 384.28 548.12 384.74 548.52 384.5 549.29 384.64 550.16 385.85 550.89 386.52 552.49 387.23 554.22 388.96 554.41 389.33 554.52 390.26 555.58 390.87 554.84 392.06 553.62 392.08 552.18 392.71 550.83 393.52 549.92 393.46 548.4 392.19 547.44 391.68 545.74 390.13 544.35 390.42 543.59 389.66 542.6 388.16 542.53 387.48 541.69 386.44 540.02 386.08 538.93 385.53 539.25 384.7 539.95 384.08 539.04 383.77 537.42 384.38 536.46 384.18 536.02 383.05 535.22 382.69 533.87 382.97 532.72 382.66 533.05 381.99 532.66 381.31 531.57 381.41 531.23 380.33 531.6 379.67 532.53 379.42 533.13 378.99 532.88 378.22 534.35 376.66 535.36 376.82 535.22 375.4 535.83 375.22 536.45 374.61 Z" id="house-109"/>
 </g>
 </svg>
+        <div class="mapctl"><button data-mz="in" title="Zoom in" aria-label="Zoom in">+</button><button data-mz="out" title="Zoom out" aria-label="Zoom out">−</button><span id="zlevel" class="zl">1×</span><button data-mz="reset" title="Back to the whole state">Reset</button><button data-mz="expand" id="mexp" title="Open the map full-window">Expand ⤢</button></div>
+      </div>
+      <div class="mapinfo" id="mapinfo" hidden></div>
+      <div class="maphint">Zoom with + / −, pinch, or ⌘/Ctrl + scroll (plain scroll when expanded) · drag to move · Esc closes the expanded map</div>
       <div class="legend">
         <span><i style="background:#059669"></i>Dem flip</span>
         <span><i style="background:#1E40AF"></i>Dem won/held</span>
@@ -351,7 +367,7 @@ footer a{color:var(--brand)}
 </div>
 
 <footer>
-  Source: South Carolina Election Commission official results feeds, statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 5 minutes until 8:33 PM ET, then every 10 minutes. All results are unofficial until certified.<br>
+  Source: South Carolina Election Commission official results. Vote counts are read from all 46 county results pages, which post before the statewide rollup; any county page that fails to load or is behind falls back to the statewide numbers. Feeds: statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 5 minutes until 8:33 PM ET, then every 10 minutes. All results are unofficial until certified.<br>
   <b>Seat math:</b> 124 seats; a majority is 63; a two-thirds supermajority is 83, so Democrats break it at 42 seats. "Held today" is each seat's current party from the "Challenge every seat 2026" sheet (89 Republican, 35 Democratic).<br>
   <b>Won</b> = every precinct counted, the state marked a winner, or the candidate has no opponent. <b>Leading</b> includes races within 3 points, credited to whoever is ahead right now. <b>Projected</b> = won + leading + seats with no votes counted yet, given to the party that holds them today.<br>
   "Reporting" = share of precincts fully counted; for a district it adds up each county's precincts for the district; SC reports absentee and early votes as their own precincts, so a district can jump in one batch. "Dem needs" assumes the remaining precincts are the same size as those counted, so treat it as rough. Baseline = average top-of-ticket Dem margin 2020–24 in the district.
@@ -415,7 +431,7 @@ const pct = (x, d=1) => (x * 100).toFixed(d) + '%';
 const pts = x => (x >= 0 ? 'D+' : 'R+') + Math.abs(x * 100).toFixed(1);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const cleanName = s => s.replace(/^(REP|DEM|NON|UNC|GRN|LIB|CON|AMR|WFM|WRK|IND)\s+/, '');
-const tm = t => new Date(t).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+const tm = t => new Date(t).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', timeZone:'America/New_York'});
 const P1 = p => p === 'DEM' ? 'D' : p === 'REP' ? 'R' : 'O';
 const plabel = p => p === 'DEM' ? 'D' : p === 'REP' ? 'R' : (p || '?').slice(0, 3);
 // precincts reporting: rounds down so a race never shows 100% until every precinct is in
@@ -432,6 +448,53 @@ async function getJSON(url) {
   if (!r.ok) throw new Error(r.status + ' on ' + url.split('/').slice(-2).join('/'));
   return r.json();
 }
+// ---- county feeds: each county posts to its own page before the statewide rollup catches up ----
+let countyInfo = null, mergeStats = null;
+async function loadCounties(details) {
+  const ids = {};
+  for (const d of details) (d.Eid || []).forEach((e, i) => { ids[d.P[i]] = e; }); // county election ids, from the state's own file
+  const res = await Promise.allSettled(Object.entries(ids).map(async ([name, eid]) => {
+    const base = `https://www.enr-scvotes.org/SC/${encodeURIComponent(name)}/${eid}`;
+    const vr = await fetch(base + '/current_ver.txt?_=' + Date.now(), {cache:'no-store'});
+    if (!vr.ok) throw new Error(vr.status);
+    const v = (await vr.text()).trim(), lm = Date.parse(vr.headers.get('Last-Modified') || '');
+    const raw = await getJSON(`${base}/${v}/json/en/summary.json`);
+    return {name, eid, v, lm: isNaN(lm) ? null : lm, raw, byK: Object.fromEntries(raw.map(c => [c.K, c]))};
+  }));
+  const counties = {}; let fail = [];
+  res.forEach((r, i) => r.status === 'fulfilled' ? counties[r.value.name] = r.value : fail.push(Object.keys(ids)[i]));
+  return {counties, fail, total: Object.keys(ids).length};
+}
+const normName = s => String(s).toLowerCase().replace(/^(rep|dem|non|unc|grn|lib|con|amr|wfm|wrk|ind)\s+/, '').replace(/[^a-z]/g, '');
+// For every contest and every county in it, use the county page when it has at least as many votes as the
+// statewide rollup for that county; otherwise keep the rollup. Candidates are matched by name, not position.
+function mergeCounty(summary, details, C) {
+  const sK = Object.fromEntries(summary.map(c => [c.K, c]));
+  const stats = {fromCounty: 0, fromState: 0};
+  const det2 = details.map(d => {
+    const c = sK[d.K];
+    if (!c || !d.Eid || !d.Cid) return d;
+    const n = c.CH.length, V = Array(n).fill(0), PX = [], PY = [], Vc = [];
+    d.P.forEach((cn, i) => {
+      const sv = (d.V[i] || []).slice(0, n); while (sv.length < n) sv.push(0);
+      let v = sv, px = d.PX[i], py = d.PY[i], useCounty = false;
+      const cc = C[cn] && C[cn].byK[d.Cid[i]];
+      if (cc) {
+        const idx = c.CH.map(name => cc.CH.findIndex(x => normName(x) === normName(name)));
+        if (idx.every(j => j >= 0)) {
+          const cv = idx.map(j => cc.V[j] || 0);
+          if (cv.reduce((a, b) => a + b, 0) >= sv.reduce((a, b) => a + b, 0)) { v = cv; px = cc.PR || 0; py = cc.TP || 0; useCounty = true; }
+        }
+      }
+      stats[useCounty ? 'fromCounty' : 'fromState']++;
+      v.forEach((x, k) => V[k] += x); PX.push(px); PY.push(py); Vc.push(v);
+    });
+    sK[d.K] = {...c, V};
+    return {...d, PX, PY, V: Vc};
+  });
+  return {summary: summary.map(c => sK[c.K] || c), details: det2, stats};
+}
+
 async function loadFeed(base, files) {
   const vr = await fetch(base + '/current_ver.txt?_=' + Date.now(), {cache:'no-store'});
   if (!vr.ok) throw new Error(vr.status + ' on ' + base.split('/SC/')[1] + ' current_ver.txt');
@@ -446,18 +509,23 @@ async function load() {
     let summary, details, chsSum = null;
     if (DEMO) { demoTick++; ({summary, details, chsSum} = demoData(demoTick)); version = 'demo-' + demoTick; lastPosted = new Date().toUTCString(); }
     else {
-      const chsP = loadFeed(CHS, ['json/en/summary.json']).then(([s]) => s).catch(e => { extraErr = e.message; return null; });
       [summary, details] = await loadFeed(ELECTION, ['json/en/summary.json', 'json/details.json']);
-      chsSum = await chsP;
-      if (chsSum) extraErr = null;
+      details = details.Contests || details;
+      countyInfo = await loadCounties(details);
+      ({summary, details, stats: mergeStats} = mergeCounty(summary, details, countyInfo.counties));
+      chsSum = countyInfo.counties.Charleston ? countyInfo.counties.Charleston.raw : null;
+      extraErr = chsSum ? null : 'Charleston County feed did not load';
     }
     details = details.Contests || details;
     races = buildRaces(summary, details);
     extras = buildExtras(summary, details, chsSum);
     if (recordSnapshot() && document.hidden) unseen = true;
     render();
-    const posted = lastPosted && !isNaN(Date.parse(lastPosted)) ? ` · state feed last updated ${tm(Date.parse(lastPosted))}` : '';
-    setStat(`Checked ${tm(Date.now())}${posted}`, 'live');
+    const lms = countyInfo ? Object.values(countyInfo.counties).map(c => c.lm).filter(Boolean) : [];
+    const newest = lms.length ? ` · newest county posting ${tm(Math.max(...lms))} ET` : '';
+    const roll = lastPosted && !isNaN(Date.parse(lastPosted)) ? ` · statewide rollup ${tm(Date.parse(lastPosted))}` : '';
+    const cf = countyInfo ? ` · ${countyInfo.total - countyInfo.fail.length} of ${countyInfo.total} county feeds read${countyInfo.fail.length ? ' (using the statewide numbers for ' + countyInfo.fail.join(', ') + ')' : ''}` : '';
+    setStat(`Checked ${tm(Date.now())} ET${newest}${roll}${cf}`, countyInfo && countyInfo.fail.length ? 'err' : 'live');
   } catch (e) {
     console.error(e);
     setStat('Could not reach the results feed (' + e.message + '). Will retry.', 'err');
@@ -753,6 +821,10 @@ function renderEvents() {
 let mapReady = false, zoomKey = null;
 function renderMap() {
   const focus = view === 'targets' ? TARGET_HDS : view === 'local' ? LOCAL_HDS : null;
+  const mi = document.getElementById('mapinfo'), sr = expanded && selected ? races.find(x => x.hd === selected) : null;
+  mi.hidden = !sr;
+  if (sr) mi.innerHTML = `<b>HD ${sr.hd}</b><span class="meta">${esc(sr.region)} · held by ${sr.incParty === 'D' ? 'Dem' : 'Rep'}</span><span class="badge b-${sr.status}">${STATUS[sr.status].label}</span>` +
+    (sr.unopposed ? `<span>${esc(sr.real[0].name)}, no opponent</span>` : `<span><b style="color:var(--dem)">${sr.dem ? esc(sr.dem.name) + ' ' + (sr.total ? pct(sr.dem.votes / sr.total) : '–') : ''}</b> vs <b style="color:var(--rep)">${sr.opp ? esc(sr.opp.name) + ' ' + (sr.total ? pct(sr.opp.votes / sr.total) : '–') : ''}</b>${sr.total ? ' · ' + pts(sr.margin) : ''}</span>${repPill(sr.pr, sr.tp, sr.total > 0)}`);
   for (const r of races) {
     const p = document.getElementById('house-' + r.hd); if (!p) continue;
     p.style.fill = STATUS[r.status].color;
@@ -764,17 +836,19 @@ function renderMap() {
   }
   document.querySelectorAll('.maplabel').forEach(l => {
     const hd = +l.dataset.hd;
-    l.style.display = (view === 'local' ? LOCAL_HDS.includes(hd) || (zoomKey === 'chs') : TARGET_HDS.includes(hd) || (zoomKey && zoomKey !== 'state')) ? '' : 'none';
+    const zoomed = expanded || (curVB && curVB[2] < fullVB[2] * 0.7);
+    l.style.display = (zoomed || (view === 'local' ? LOCAL_HDS : TARGET_HDS).includes(hd)) ? '' : 'none';
   });
 }
 
 function setupMap() {
   const svg = document.querySelector('.mapcard svg');
   svg.dataset.vb = svg.getAttribute('viewBox');
+  fullVB = svg.dataset.vb.split(/\s+/).map(Number); curVB = [...fullVB];
   svg.removeAttribute('width'); svg.removeAttribute('height');
   for (const h of HOUSE) {
     const p = document.getElementById('house-' + h.hd); if (!p) continue;
-    p.addEventListener('click', () => select(h.hd, true));
+    p.addEventListener('click', () => { if (!dragMoved) select(h.hd, true); });
     const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
     p.appendChild(title);
     if (TARGET_HDS.includes(h.hd)) { p.classList.add('t'); p.parentNode.appendChild(p); }
@@ -787,10 +861,24 @@ function setupMap() {
   mapReady = true;
 }
 
-function zoomTo(key) {
+let fullVB = null, curVB = null, expanded = false, dragMoved = false;
+// Every view change goes through here: zoom limited to 1x-40x and the view kept over the state
+function applyVB(vb) {
   const svg = document.querySelector('.mapcard svg');
+  const W = fullVB[2], H = fullVB[3];
+  const w = Math.min(W, Math.max(W / 40, vb[2])), h = w * H / W;
+  const cx = Math.min(fullVB[0] + W - w / 2, Math.max(fullVB[0] + w / 2, vb[0] + vb[2] / 2));
+  const cy = Math.min(fullVB[1] + H - h / 2, Math.max(fullVB[1] + h / 2, vb[1] + vb[3] / 2));
+  curVB = [cx - w / 2, cy - h / 2, w, h];
+  svg.setAttribute('viewBox', curVB.map(v => v.toFixed(2)).join(' '));
+  const z = w / 800; // labels keep the same on-screen size at any zoom
+  document.querySelectorAll('.maplabel').forEach(l => { l.style.fontSize = (9 * z) + 'px'; l.style.strokeWidth = (2.5 * z) + 'px'; });
+  document.getElementById('zlevel').textContent = Math.round(W / w * 10) / 10 + '×';
+  if (races) renderMap();
+}
+function zoomTo(key) {
   zoomKey = key;
-  let vb = svg.dataset.vb.split(/\s+/).map(Number);
+  let vb = [...fullVB];
   if (key !== 'state') {
     const set = key === 'local' ? HOUSE.filter(h => LOCAL_HDS.includes(h.hd)) : HOUSE.filter(h => ZOOMS[key].some(c => h.region.includes(c)));
     const bs = set.map(h => h.bbox).filter(Boolean);
@@ -798,17 +886,56 @@ function zoomTo(key) {
       let x0 = Math.min(...bs.map(b => b.x)), y0 = Math.min(...bs.map(b => b.y));
       let x1 = Math.max(...bs.map(b => b.x + b.width)), y1 = Math.max(...bs.map(b => b.y + b.height));
       const pad = Math.max(x1 - x0, y1 - y0) * 0.06; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
-      // keep the map's aspect ratio so the card doesn't jump in size
-      const ar = vb[2] / vb[3]; let w = x1 - x0, h = y1 - y0;
+      const ar = fullVB[2] / fullVB[3]; let w = x1 - x0, h = y1 - y0;
       if (w / h < ar) { const nw = h * ar; x0 -= (nw - w) / 2; w = nw; } else { const nh = w / ar; y0 -= (nh - h) / 2; h = nh; }
       vb = [x0, y0, w, h];
     }
   }
-  svg.setAttribute('viewBox', vb.map(v => v.toFixed(1)).join(' '));
-  const z = vb[2] / 800;
-  document.querySelectorAll('.maplabel').forEach(l => { l.style.fontSize = (9 * Math.max(z, 0.22)) + 'px'; l.style.strokeWidth = (2.5 * Math.max(z, 0.22)) + 'px'; });
   document.querySelectorAll('#zoom button').forEach(b => b.classList.toggle('on', b.dataset.zoom === key));
-  if (races) renderMap();
+  applyVB(vb);
+}
+function zoomBy(f, pt) {
+  const [x, y, w, h] = curVB, c = pt || [x + w / 2, y + h / 2];
+  zoomKey = 'custom'; document.querySelectorAll('#zoom button').forEach(b => b.classList.remove('on'));
+  applyVB([c[0] - (c[0] - x) / f, c[1] - (c[1] - y) / f, w / f, h / f]);
+}
+function setExpanded(on) {
+  expanded = on;
+  document.querySelector('.mapcard').classList.toggle('expanded', on);
+  document.body.classList.toggle('mapopen', on);
+  document.getElementById('mexp').textContent = on ? 'Close ✕' : 'Expand ⤢';
+  requestAnimationFrame(() => applyVB(curVB));
+}
+function setupPanZoom() {
+  const svg = document.querySelector('.mapcard svg');
+  const at = (cx, cy) => { const p = new DOMPoint(cx, cy).matrixTransform(svg.getScreenCTM().inverse()); return [p.x, p.y]; };
+  const ptrs = new Map(); let start = null, pinch = null;
+  const begin = () => { const [p] = [...ptrs.values()]; start = {x: p[0], y: p[1], vb: [...curVB], k: 1 / svg.getScreenCTM().a}; };
+  svg.addEventListener('pointerdown', e => {
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]); if (ptrs.size === 1) { dragMoved = false; begin(); }
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = {d: Math.hypot(a[0] - b[0], a[1] - b[1]), vb: [...curVB], mid: at((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)}; }
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2 && pinch) {
+      const [a, b] = [...ptrs.values()], f = Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d, [x, y, w, h] = pinch.vb, c = pinch.mid;
+      dragMoved = true; zoomKey = 'custom'; applyVB([c[0] - (c[0] - x) / f, c[1] - (c[1] - y) / f, w / f, h / f]); return;
+    }
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    if (!dragMoved && Math.hypot(dx, dy) < 5) return; // small movement = a click, not a drag
+    if (!dragMoved) { dragMoved = true; svg.setPointerCapture(e.pointerId); svg.classList.add('panning'); }
+    zoomKey = 'custom'; document.querySelectorAll('#zoom button').forEach(b => b.classList.remove('on'));
+    applyVB([start.vb[0] - dx * start.k, start.vb[1] - dy * start.k, start.vb[2], start.vb[3]]);
+  });
+  const end = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (ptrs.size === 1) begin(); svg.classList.remove('panning'); if (dragMoved && !ptrs.size) setTimeout(() => { dragMoved = false; }, 0); };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  // trackpad pinch arrives as ctrl+wheel; plain scrolling only zooms when the map is expanded
+  svg.addEventListener('wheel', e => {
+    if (!expanded && !e.ctrlKey && !e.metaKey) return;
+    e.preventDefault(); zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), at(e.clientX, e.clientY));
+  }, {passive: false});
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && expanded) setExpanded(false); });
 }
 
 function renderExtras() {
@@ -975,8 +1102,9 @@ function setView(v) {
   render();
 }
 function select(hd, fromMap) {
+  if (expanded) { selected = selected === hd ? null : hd; return render(); }
   const inView = view === 'all' || (view === 'targets' ? TARGET_HDS : LOCAL_HDS).includes(hd);
-  if (!inView) { view = 'all'; history.replaceState(null, '', '#all'); zoomTo(zoomKey || 'state'); }
+  if (!inView) { view = 'all'; history.replaceState(null, '', '#all'); }
   if (view === 'all' && tableFilter !== 'all' && !document.getElementById('row-' + hd)) tableFilter = 'all';
   selected = fromMap && selected === hd ? null : hd;
   render();
@@ -986,6 +1114,7 @@ document.addEventListener('click', ev => {
   const t = ev.target;
   const tab = t.closest('#tabs button'); if (tab) return setView(tab.dataset.view);
   const z = t.closest('#zoom button'); if (z) return zoomTo(z.dataset.zoom);
+  const mz = t.closest('[data-mz]'); if (mz) { const a = mz.dataset.mz; return a === 'in' ? zoomBy(1.6) : a === 'out' ? zoomBy(1 / 1.6) : a === 'reset' ? zoomTo('state') : setExpanded(!expanded); }
   const ts = t.closest('[data-tsort]'); if (ts) { targetSort = ts.dataset.tsort; savePrefs(); return render(); }
   const f = t.closest('[data-filter]'); if (f) { tableFilter = f.dataset.filter; savePrefs(); return render(); }
   const pr = t.closest('[data-preset]'); if (pr) { const p = PRESETS.find(x => x[0] === pr.dataset.preset)[2]; tableFilter = p.filter; tableHeld = p.held; tableRegion = p.region; tableSort = p.sort; tableDir = p.dir; savePrefs(); return render(); }
@@ -1096,6 +1225,17 @@ function runSelfTest() {
     if (buckets !== 124 || proj !== 124 || brute !== T.Rwon || T.Rmax !== 124 - T.Dwon - T.Owon || (T.Rwon >= 83 && v !== 'rclinch') || (T.Rwon < 83 && T.Rmax < 83 && v !== 'broken')) { bad++; ok('G random night #' + k, false, {buckets, proj, Rwon: T.Rwon, brute, Rmax: T.Rmax, v}); }
   }
   ok('G 400 random nights: seats always add to 124, verdict matches the rules', !bad, bad);
+  // H: county pages newer than the rollup; candidate order differs; one county missing -> falls back to the rollup
+  { const sm = [{K:'X1', C:'x', CH:['REP A Smith', 'DEM B Jones', 'Write-In'], P:['REP', 'DEM', 'NON'], V:[5, 5, 0], W:[0, 0, 0]}];
+    const dt = [{K:'X1', P:['Aa', 'Bb'], Eid:['1', '2'], Cid:['01', '02'], PX:[0, 1], PY:[5, 5], V:[[0, 0, 0], [5, 5, 0]]}];
+    const C = {Aa: {byK: {'01': {CH:['DEM B Jones', 'REP A Smith', 'Write-In'], V:[70, 30, 1], PR:2, TP:8}}}};
+    const m = mergeCounty(sm, dt, C);
+    ok('H county merge: votes summed by candidate name (R 35, D 75, write-in 1)', JSON.stringify(m.summary[0].V) === '[35,75,1]', m.summary[0].V);
+    ok('H county merge: precincts from county page, missing county from rollup', JSON.stringify(m.details[0].PX) === '[2,1]' && JSON.stringify(m.details[0].PY) === '[8,5]', [m.details[0].PX, m.details[0].PY]);
+    const C2 = {Aa: {byK: {'01': {CH:['DEM B Jones', 'REP A Smith', 'Write-In'], V:[0, 0, 0], PR:0, TP:8}}}};
+    const dt2 = [{...dt[0], V:[[10, 20, 0], [5, 5, 0]], PX:[1, 1]}];
+    const m2 = mergeCounty(sm, dt2, C2);
+    ok('H county merge: a county page behind the rollup is ignored', JSON.stringify(m2.summary[0].V) === '[15,25,0]', m2.summary[0].V); }
   const fails = out.filter(l => l.startsWith('FAIL')).length;
   const pre = document.createElement('pre'); pre.id = 'selftest'; pre.textContent = `SELF-TEST ${fails ? 'FAILED' : 'PASSED'}: ${out.length - fails} of ${out.length}\n` + out.join('\n');
   pre.style.cssText = 'background:#fff;border:2px solid ' + (fails ? '#DC2626' : '#059669') + ';padding:12px;border-radius:8px;white-space:pre-wrap';
@@ -1103,6 +1243,7 @@ function runSelfTest() {
 }
 
 setupMap();
+setupPanZoom();
 zoomTo(view === 'local' ? 'chs' : 'state');
 if (params.has('selftest')) runSelfTest();
 (async () => {
