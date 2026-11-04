@@ -120,7 +120,7 @@ table.house tr.fresh td:first-child{box-shadow:inset 3px 0 0 #F59E0B}
 table.house .nm{max-width:105px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
 table.house .tg{font:600 10px 'DM Sans',sans-serif;color:var(--brand);margin-left:4px}
 .pbar{display:inline-block;width:30px;height:5px;background:var(--soft);border-radius:3px;vertical-align:middle;margin-right:5px;overflow:hidden}
-.pbar span{display:block;height:100%;background:var(--brand)}
+.pbar{display:inline-flex}.pbar span{display:block;height:100%;background:var(--brand)}
 /* cards */
 .cards{display:grid;gap:10px}
 .card{background:var(--card);border:1px solid var(--line);border-left:5px solid #CBD5E1;border-radius:12px;padding:12px 14px;scroll-margin-top:70px}
@@ -151,7 +151,8 @@ table.house .tg{font:600 10px 'DM Sans',sans-serif;color:var(--brand);margin-lef
 .rep{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:3px 9px;border-radius:999px;background:var(--soft);white-space:nowrap}
 .rep b{font:700 13px 'DM Sans',sans-serif;color:var(--head)}
 .rbar{width:52px;height:6px;border-radius:3px;background:#E2E8F0;overflow:hidden;display:inline-block}
-.rbar span{display:block;height:100%;background:var(--brand)}
+.rbar{display:inline-flex}.rbar span{display:block;height:100%;background:var(--brand)}.rbar span.pp,.pbar span.pp{background:#C7D2FE}
+.vtl{font-size:12px;color:var(--muted);margin-top:5px}.vtl b{color:var(--text)}.vtl b.none{color:var(--toss)}
 .rep.rfull{background:var(--flip-tint)}.rep.rfull .rbar span{background:var(--flip)}.rep.rfull b{color:var(--flip)}
 .rep.r0 b{color:var(--muted)}
 .repwrap{margin-top:6px}
@@ -254,6 +255,8 @@ const CHS = 'https://www.enr-scvotes.org/SC/Charleston/127310';
 const FAST_UNTIL = Date.parse('2026-11-04T01:33:00Z');
 const refreshMs = () => (Date.now() < FAST_UNTIL ? 5 : 10) * 60 * 1000;
 const HOUSE = /*HOUSE*/[];
+// For each county and county contest id: the precincts in that race (fetched from the county pages at build time; failsafe/provisional excluded)
+const PREC = /*PRECINCTS*/{};
 // Area label = sheet region + the counties the state lists for the race (the sheet mislabels HD 28, 39 and 44)
 HOUSE.forEach(h => { h.region = `${h.region.split('/')[0].trim()} / ${h.counties.join(', ')}`; });
 const SEATS = 124, MAJ = 63, SUPER = 83, D_BREAK = SEATS - SUPER + 1; // 42
@@ -306,10 +309,14 @@ const P1 = p => p === 'DEM' ? 'D' : p === 'REP' ? 'R' : 'O';
 const plabel = p => p === 'DEM' ? 'D' : p === 'REP' ? 'R' : (p || '?').slice(0, 3);
 // precincts reporting: rounds down so a race never shows 100% until every precinct is in
 const repPct = (pr, tp) => tp ? (pr >= tp ? 100 : Math.floor(pr / tp * 100)) : 0;
-function repPill(pr, tp, hasVotes) {
-  const p = repPct(pr, tp), cls = p >= 100 ? 'rfull' : hasVotes || pr ? 'rpart' : 'r0';
-  const note = hasVotes && !pr ? ' · early/absentee votes only' : '';
-  return `<span class="rep ${cls}" title="Precincts fully reported"><span class="rbar"><span style="width:${p}%"></span></span><b>${p}%</b> reporting <span class="rsub">${fmt(pr)} of ${fmt(tp)} precincts${note}</span></span>`;
+function repPill(pr, tp, hasVotes, pp = 0) {
+  const p = repPct(pr, tp), cls = p >= 100 ? 'rfull' : hasVotes || pr || pp ? 'rpart' : 'r0';
+  const pw = tp ? Math.min(100 - p, pp / tp * 100) : 0;
+  return `<span class="rep ${cls}" title="Complete = every vote type counted in that precinct. Partly counted = early/absentee votes in, Election Day count not finished."><span class="rbar"><span style="width:${p}%"></span><span class="pp" style="width:${pw}%"></span></span><b>${p}%</b> of precincts complete <span class="rsub">${fmt(pr)} of ${fmt(tp)} done${pp ? ` · ${fmt(pp)} partly counted` : ''}</span></span>`;
+}
+function vtLine(vt, label = 'Counted so far') {
+  if (!vt || !(vt[0] + vt[1] + vt[2] + vt[3])) return '';
+  return `<div class="vtl">${label}: Early <b>${fmt(vt[1])}</b> · Absentee by mail <b>${fmt(vt[2])}</b> · Election Day <b class="${vt[0] ? '' : 'none'}">${vt[0] ? fmt(vt[0]) : 'none yet'}</b>${vt[3] ? ` · Other <b>${fmt(vt[3])}</b>` : ''}</div>`;
 }
 
 // ---------------- data loading ----------------
@@ -328,8 +335,10 @@ async function loadCounties(details) {
     const vr = await fetch(base + '/current_ver.txt?_=' + Date.now(), {cache:'no-store'});
     if (!vr.ok) throw new Error(vr.status);
     const v = (await vr.text()).trim(), lm = Date.parse(vr.headers.get('Last-Modified') || '');
-    const raw = await getJSON(`${base}/${v}/json/en/summary.json`);
-    return {name, eid, v, lm: isNaN(lm) ? null : lm, raw, byK: Object.fromEntries(raw.map(c => [c.K, c]))};
+    const [raw, st, vt] = await Promise.all([getJSON(`${base}/${v}/json/en/summary.json`), getJSON(`${base}/${v}/json/status.json`).catch(() => null), getJSON(`${base}/${v}/json/vt.json`).catch(() => null)]);
+    // precinct status codes: 1 = nothing counted, 2 = partly counted (early/absentee in), 4 = fully counted, 32 = failsafe/provisional (not a precinct)
+    const status = st && st.P ? Object.fromEntries(st.P.map((q, i) => [q.trim().toLowerCase(), st.S[i]])) : null;
+    return {name, eid, v, lm: isNaN(lm) ? null : lm, raw, byK: Object.fromEntries(raw.map(c => [c.K, c])), status, types: vt ? vt.Types : null, vtK: vt ? Object.fromEntries(vt.Contests.map(c => [c.K, c.T])) : {}};
   }));
   const counties = {}; let fail = [];
   res.forEach((r, i) => r.status === 'fulfilled' ? counties[r.value.name] = r.value : fail.push(Object.keys(ids)[i]));
@@ -338,29 +347,47 @@ async function loadCounties(details) {
 const normName = s => String(s).toLowerCase().replace(/^(rep|dem|non|unc|grn|lib|con|amr|wfm|wrk|ind)\s+/, '').replace(/[^a-z]/g, '');
 // For every contest and every county in it, use the county page when it has at least as many votes as the
 // statewide rollup for that county; otherwise keep the rollup. Candidates are matched by name, not position.
-function mergeCounty(summary, details, C) {
+function precStat(co, cn, cid, prec = PREC) {
+  const names = prec[cn] && prec[cn][cid];
+  if (!co || !co.status || !names) return null;
+  let full = 0, part = 0, real = 0;
+  for (const q of names) { const st = co.status[q]; if (st === 32) continue; real++; if (st === 4) full++; else if (st === 2) part++; }
+  return {full, part, real};
+}
+function vtOf(co, cid) { // votes by type: [Election Day, Early, Absentee by mail, other]
+  if (!co || !co.types || !co.vtK || !co.vtK[cid]) return null;
+  const o = [0, 0, 0, 0];
+  co.types.forEach((t, i) => { o[/election day/i.test(t) ? 0 : /early/i.test(t) ? 1 : /absentee|mail/i.test(t) ? 2 : 3] += co.vtK[cid][i] || 0; });
+  return o;
+}
+function mergeCounty(summary, details, C, prec = PREC) {
   const sK = Object.fromEntries(summary.map(c => [c.K, c]));
   const stats = {fromCounty: 0, fromState: 0};
   const det2 = details.map(d => {
     const c = sK[d.K];
     if (!c || !d.Eid || !d.Cid) return d;
-    const n = c.CH.length, V = Array(n).fill(0), PX = [], PY = [], Vc = [];
+    const n = c.CH.length, V = Array(n).fill(0), PX = [], PY = [], PP = [], Vc = [], VT = [0, 0, 0, 0]; let vtMissing = 0;
     d.P.forEach((cn, i) => {
       const sv = (d.V[i] || []).slice(0, n); while (sv.length < n) sv.push(0);
-      let v = sv, px = d.PX[i], py = d.PY[i], useCounty = false;
-      const cc = C[cn] && C[cn].byK[d.Cid[i]];
+      let v = sv, px = d.PX[i], py = d.PY[i], pp = 0, useCounty = false;
+      const co = C[cn], cc = co && co.byK[d.Cid[i]];
       if (cc) {
         const idx = c.CH.map(name => cc.CH.findIndex(x => normName(x) === normName(name)));
         if (idx.every(j => j >= 0)) {
           const cv = idx.map(j => cc.V[j] || 0);
-          if (cv.reduce((a, b) => a + b, 0) >= sv.reduce((a, b) => a + b, 0)) { v = cv; px = cc.PR || 0; py = cc.TP || 0; useCounty = true; }
+          if (cv.reduce((a, b) => a + b, 0) >= sv.reduce((a, b) => a + b, 0)) { v = cv; useCounty = true; }
         }
       }
+      // precincts from each precinct's own status (the county total counts failsafe/provisional, which never complete)
+      const ps = useCounty ? precStat(co, cn, d.Cid[i], prec) : null;
+      if (ps) { px = ps.full; py = ps.real; pp = ps.part; }
+      const vt = useCounty ? vtOf(co, d.Cid[i]) : null;
+      if (vt) vt.forEach((x, k) => VT[k] += x); else vtMissing++;
       stats[useCounty ? 'fromCounty' : 'fromState']++;
-      v.forEach((x, k) => V[k] += x); PX.push(px); PY.push(py); Vc.push(v);
+      v.forEach((x, k) => V[k] += x); PX.push(px); PY.push(py); PP.push(pp); Vc.push(v);
     });
     sK[d.K] = {...c, V};
-    return {...d, PX, PY, V: Vc};
+    return {...d, PX, PY, PP, VT: vtMissing === d.P.length ? null : VT, vtPartial: vtMissing > 0 && vtMissing < d.P.length, V: Vc};
   });
   return {summary: summary.map(c => sK[c.K] || c), details: det2, stats};
 }
@@ -426,7 +453,8 @@ function evalRace(h, c, d) {
   const total = cands.reduce((s, x) => s + x.votes, 0);
   const pr = d ? d.PX.reduce((a, b) => a + b, 0) : (c.PR || 0);
   const tp = d ? d.PY.reduce((a, b) => a + b, 0) : (c.TP || 0);
-  const byCounty = d ? d.P.map((name, i) => ({name, px: d.PX[i], py: d.PY[i], v: d.V[i] || []})) : [];
+  const byCounty = d ? d.P.map((name, i) => ({name, px: d.PX[i], py: d.PY[i], pp: d.PP ? d.PP[i] : 0, v: d.V[i] || []})) : [];
+  const pp = d && d.PP ? d.PP.reduce((a, b) => a + b, 0) : 0, vt = d && d.VT ? d.VT : null;
   const unopposed = real.length === 1;
   let margin = 0; // + means the Democrat is ahead of the main opponent
   if (total) {
@@ -453,19 +481,19 @@ function evalRace(h, c, d) {
   const side = winner ? P1(winner) : total ? P1(leader.party) : null;
   const share = tp ? pr / tp : 0;
   let needs = null, remaining = 0;
-  if (!winner && total && share > 0 && share < 1 && dem && opp) {
+  if (false) { // remaining-vote estimate disabled: early votes are spread across precincts, so precinct share does not measure votes left
     remaining = Math.round(total / share - total);
     if (remaining > 0) needs = 0.5 + (opp.votes - dem.votes) / (2 * remaining);
   }
-  return {...base, contest: c.C, cands, real, dem, opp, total, pr, tp, share, margin, allIn, status, side,
+  return {...base, contest: c.C, cands, real, dem, opp, total, pr, tp, pp, vt, share, margin, allIn, status, side,
     final: !!winner, unopposed, needs, remaining, byCounty, called: !!called};
 }
 
 function tally(list) {
   const T = {Dwon:0, Rwon:0, Owon:0, Dlead:0, Rlead:0, Olead:0, toss:0, recount:0, wait:0, waitD:0, waitR:0, udem:0, urep:0,
-             dGain:[], rGain:[], pr:0, tp:0, contested:0, withVotes:0, fullIn:0, anyVotes:false, decided:0};
+             dGain:[], rGain:[], pr:0, tp:0, pp:0, contested:0, withVotes:0, fullIn:0, anyVotes:false, decided:0};
   for (const r of list) {
-    if (!r.unopposed) { T.pr += r.pr; T.tp += r.tp; T.contested++; if (r.total) T.withVotes++; if (r.allIn) T.fullIn++; }
+    if (!r.unopposed) { T.pr += r.pr; T.tp += r.tp; T.pp += r.pp || 0; T.contested++; if (r.total) T.withVotes++; if (r.allIn) T.fullIn++; }
     if (r.total && !r.unopposed) T.anyVotes = true;
     if (r.status === 'udem') T.udem++;
     if (r.status === 'urep') T.urep++;
@@ -489,13 +517,14 @@ function buildExtras(summary, details, chsSum) {
     let main = null, county = null;
     if (e.state && sK[e.state]) {
       const d = dK[e.state];
-      main = summarizeContest(sK[e.state], d ? d.PX.reduce((x, y) => x + y, 0) : sK[e.state].PR, d ? d.PY.reduce((x, y) => x + y, 0) : sK[e.state].TP);
+      main = summarizeContest(sK[e.state], d ? d.PX.reduce((x, y) => x + y, 0) : sK[e.state].PR, d ? d.PY.reduce((x, y) => x + y, 0) : sK[e.state].TP, d && d.PP ? d.PP.reduce((x, y) => x + y, 0) : 0, d ? d.VT : null);
     }
-    if (cK[e.chs]) { county = summarizeContest(cK[e.chs], cK[e.chs].PR, cK[e.chs].TP); if (!main) { main = county; county = null; } }
+    if (cK[e.chs]) { const co = countyInfo && countyInfo.counties.Charleston, ps = co ? precStat(co, 'Charleston', e.chs) : null;
+      county = ps ? summarizeContest(cK[e.chs], ps.full, ps.real, ps.part, vtOf(co, e.chs)) : summarizeContest(cK[e.chs], cK[e.chs].PR, cK[e.chs].TP); if (!main) { main = county; county = null; } }
     return {...e, main, county, wantCounty: !!(e.state && e.chs)};
   });
 }
-function summarizeContest(c, pr, tp) {
+function summarizeContest(c, pr, tp, pp = 0, vt = null) {
   const cands = c.CH.map((n, i) => ({name: cleanName(n), party: c.P[i], votes: c.V[i] || 0, won: !!(c.W && c.W[i] === 1)}));
   const total = cands.reduce((s, x) => s + x.votes, 0);
   const ranked = [...cands].sort((a, b) => b.votes - a.votes);
@@ -503,7 +532,7 @@ function summarizeContest(c, pr, tp) {
   const margin = total && b ? (a.votes - b.votes) / total : 0;
   const called = cands.some(x => x.won), allIn = tp > 0 && pr >= tp;
   const status = !total ? 'wait' : called ? 'called' : allIn ? 'final' : margin < 0.03 ? 'toss' : 'lead';
-  return {cands, total, ranked, leader: a, second: b, margin, pr, tp, called, allIn, status};
+  return {cands, total, ranked, leader: a, second: b, margin, pr, tp, pp, vt, called, allIn, status};
 }
 
 // ---------------- history (kept in this browser so a reload keeps the night's trail) ----------------
@@ -581,7 +610,7 @@ function render() {
   if (!races) return;
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
   const T = tally(races);
-  document.body.dataset.tally = JSON.stringify({v: version, Dwon: T.Dwon, Rwon: T.Rwon, Owon: T.Owon, Dlead: T.Dlead, Rlead: T.Rlead, Olead: T.Olead, wait: T.wait, waitD: T.waitD, waitR: T.waitR, Dproj: T.Dproj, Rproj: T.Rproj, recount: T.recount, dGain: T.dGain.map(r => r.hd), rGain: T.rGain.map(r => r.hd), verdict: verdict(T).state});
+  document.body.dataset.tally = JSON.stringify({v: version, Dwon: T.Dwon, Rwon: T.Rwon, Owon: T.Owon, Dlead: T.Dlead, Rlead: T.Rlead, Olead: T.Olead, wait: T.wait, waitD: T.waitD, waitR: T.waitR, Dproj: T.Dproj, Rproj: T.Rproj, recount: T.recount, dGain: T.dGain.map(r => r.hd), rGain: T.rGain.map(r => r.hd), verdict: verdict(T).state, rep: Object.fromEntries(races.map(r => [r.hd, [r.pr, r.pp, r.tp]])), vt: Object.fromEntries(races.filter(r => r.vt).map(r => [r.hd, r.vt]))});
   renderScore(T);
   renderEvents();
   renderMap();
@@ -630,12 +659,13 @@ function renderScore(T) {
   const live = races.filter(r => !r.final && r.total && r.dem && r.opp);
   const repLeads = live.filter(r => r.side === 'R').sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin));
   const demLeads = live.filter(r => r.side === 'D').sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin));
-  const tipItem = r => `<li data-hd="${r.hd}"><b>HD ${r.hd}</b> ${pts(r.margin)} · <b>${repPct(r.pr, r.tp)}% reporting</b> · ${esc(r.region)}${r.target ? ` · <b>${r.incParty === 'D' ? 'defend' : 'Key Flip Target'}</b>` : ''}</li>`;
+  const tipItem = r => `<li data-hd="${r.hd}"><b>HD ${r.hd}</b> ${pts(r.margin)} · <b>${repPct(r.pr, r.tp)}% complete</b>${r.pp ? `, ${r.pp} of ${r.tp} partly counted` : ''} · ${esc(r.region)}${r.target ? ` · <b>${r.incParty === 'D' ? 'defend' : 'Key Flip Target'}</b>` : ''}</li>`;
   const needLine = T.Rproj < SUPER ? `Republicans are below ${SUPER} on current projection. Next closest Republican leads:` : `Republicans must lose ${short} more seat${short === 1 ? '' : 's'} for the supermajority to break. Closest Republican leads:`;
 
   document.getElementById('score').innerHTML = `
     <div class="headline ${cls}">${head}</div>
-    <div class="repline">${repPill(T.pr, T.tp, T.anyVotes)}<span>of precincts across the ${T.contested} contested House races · <b>${T.withVotes}</b> of ${T.contested} races have votes · <b>${T.fullIn}</b> fully counted</span></div>
+    <div class="repline">${repPill(T.pr, T.tp, T.anyVotes, T.pp)}<span>across the ${T.contested} contested House races · <b>${T.withVotes}</b> of ${T.contested} races have votes · <b>${T.fullIn}</b> fully counted</span></div>
+    ${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main ? vtLine(sen.main.vt, 'Votes counted statewide so far (U.S. Senate race)') : ''; })()}
     <div class="subline">${sub}</div>
     <div class="seatwrap">
       <div class="seatbar">${bar}</div>
@@ -694,7 +724,7 @@ function renderMap() {
   const mi = document.getElementById('mapinfo'), sr = expanded && selected ? races.find(x => x.hd === selected) : null;
   mi.hidden = !sr;
   if (sr) mi.innerHTML = `<b>HD ${sr.hd}</b><span class="meta">${esc(sr.region)} · held by ${sr.incParty === 'D' ? 'Dem' : 'Rep'}</span><span class="badge b-${sr.status}">${STATUS[sr.status].label}</span>` +
-    (sr.unopposed ? `<span>${esc(sr.real[0].name)}, no opponent</span>` : `<span><b style="color:var(--dem)">${sr.dem ? esc(sr.dem.name) + ' ' + (sr.total ? pct(sr.dem.votes / sr.total) : '–') : ''}</b> vs <b style="color:var(--rep)">${sr.opp ? esc(sr.opp.name) + ' ' + (sr.total ? pct(sr.opp.votes / sr.total) : '–') : ''}</b>${sr.total ? ' · ' + pts(sr.margin) : ''}</span>${repPill(sr.pr, sr.tp, sr.total > 0)}`);
+    (sr.unopposed ? `<span>${esc(sr.real[0].name)}, no opponent</span>` : `<span><b style="color:var(--dem)">${sr.dem ? esc(sr.dem.name) + ' ' + (sr.total ? pct(sr.dem.votes / sr.total) : '–') : ''}</b> vs <b style="color:var(--rep)">${sr.opp ? esc(sr.opp.name) + ' ' + (sr.total ? pct(sr.opp.votes / sr.total) : '–') : ''}</b>${sr.total ? ' · ' + pts(sr.margin) : ''}</span>${repPill(sr.pr, sr.tp, sr.total > 0, sr.pp)}`);
   for (const r of races) {
     const p = document.getElementById('house-' + r.hd); if (!p) continue;
     p.style.fill = STATUS[r.status].color;
@@ -702,7 +732,7 @@ function renderMap() {
     p.classList.toggle('sel', selected === r.hd);
     const t = p.querySelector('title');
     if (t) t.textContent = `HD ${r.hd} · ${r.region} · held by ${r.incParty === 'D' ? 'Dem' : 'Rep'} today\n${STATUS[r.status].label}` +
-      (r.unopposed ? '' : r.total ? `: ${r.dem ? 'D ' + pct(r.dem.votes / r.total) : ''}${r.opp ? ' · ' + plabel(r.opp.party) + ' ' + pct(r.opp.votes / r.total) : ''} · ${repPct(r.pr, r.tp)}% of precincts reporting` : '');
+      (r.unopposed ? '' : r.total ? `: ${r.dem ? 'D ' + pct(r.dem.votes / r.total) : ''}${r.opp ? ' · ' + plabel(r.opp.party) + ' ' + pct(r.opp.votes / r.total) : ''} · ${repPct(r.pr, r.tp)}% of precincts complete, ${r.pp} partly counted` : '');
   }
   document.querySelectorAll('.maplabel').forEach(l => {
     const hd = +l.dataset.hd;
@@ -819,7 +849,7 @@ function renderExtras() {
     const lp = m.leader && m.leader.party;
     const bcls = m.status === 'wait' ? 'b-wait' : m.status === 'toss' ? 'b-toss' : lp === 'DEM' ? 'b-dlead' : lp === 'REP' ? 'b-rlead' : 'b-wait';
     const badge = m.status === 'wait' || m.status === 'toss' ? label[m.status] : `${label[m.status]}: ${lp === 'DEM' ? 'Dem' : lp === 'REP' ? 'Rep' : esc(m.leader.name.split(' ').slice(-1)[0])}`;
-    const note = !m.total ? 'Waiting for the first votes.' : `${esc(m.leader.name)} ${m.allIn || m.called ? 'finishes' : 'leads'} ${fmt(m.leader.votes - m.second.votes)} votes ahead (${(m.margin * 100).toFixed(1)} pts) with ${m.tp ? pct(m.pr / m.tp, 0) : '0%'} of precincts counted.`;
+    const note = !m.total ? 'Waiting for the first votes.' : `${esc(m.leader.name)} ${m.allIn || m.called ? 'finishes' : 'leads'} ${fmt(m.leader.votes - m.second.votes)} votes ahead (${(m.margin * 100).toFixed(1)} pts) with ${repPct(m.pr, m.tp)}% of precincts complete${m.pp ? ` and ${fmt(m.pp)} more partly counted` : ''}.`;
     let cl = '';
     if (e.wantCounty) {
       const c = e.county;
@@ -827,7 +857,7 @@ function renderExtras() {
              : `<div class="facts"><span>Charleston County numbers unavailable${extraErr ? ' (' + esc(extraErr) + ')' : ''}</span></div>`;
     }
     return `<div class="xcard"><div class="ch"><div><h3>${esc(e.title)}</h3><div class="meta">${esc(e.scope)}</div></div><span class="badge ${bcls}">${badge}</span></div>
-      <div class="repwrap">${repPill(m.pr, m.tp, m.total > 0)}</div>
+      <div class="repwrap">${repPill(m.pr, m.tp, m.total > 0, m.pp)}${vtLine(m.vt)}</div>
       <div class="row">${rows}</div>
       <div class="facts"><span>Votes counted <b>${fmt(m.total)}</b></span></div>
       <div class="note">${note}</div>${cl}</div>`;
@@ -843,7 +873,7 @@ function characterize(r) {
   const dAhead = r.margin >= 0, lead = dAhead ? r.dem : r.opp, gap = Math.abs((r.dem ? r.dem.votes : 0) - (r.opp ? r.opp.votes : 0));
   const lp = dAhead ? 'Democrat' : r.opp && r.opp.party === 'REP' ? 'Republican' : 'opponent';
   const vsBase = r.margin - r.base;
-  let s = r.called ? `Race called for ${esc(lead.name)}. ` : r.allIn ? `All precincts counted: ${esc(lead.name)} (${lp}) finishes ${fmt(gap)} votes ahead. ` : `${esc(lead.name)} (${lp}) leads by ${fmt(gap)} votes with ${pct(r.share, 0)} of precincts counted. `;
+  let s = r.called ? `Race called for ${esc(lead.name)}. ` : r.allIn ? `All precincts counted: ${esc(lead.name)} (${lp}) finishes ${fmt(gap)} votes ahead. ` : `${esc(lead.name)} (${lp}) leads by ${fmt(gap)} votes with ${repPct(r.pr, r.tp)}% of precincts complete${r.pp ? ` and ${r.pp} more partly counted` : ''}. `;
   s += `Dem running ${Math.abs(vsBase * 100).toFixed(1)} pts ${vsBase >= 0 ? 'ahead of' : 'behind'} the district baseline (${pts(r.base)}).`;
   if (r.needs !== null) {
     if (r.margin < 0) s += r.needs > 1 ? ' Not enough vote appears to be left for the Dem to catch up (rough estimate).' : ` To catch up, the Dem needs about ${pct(r.needs, 0)} of the roughly ${fmt(r.remaining)} votes still out (rough estimate).`;
@@ -865,7 +895,7 @@ function card(r) {
   return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}${fresh ? ' fresh' : ''}" id="card-${r.hd}">
     <div class="ch"><div><h3>HD ${r.hd}${PINNED.includes(r.hd) ? ' <span class="pin">Pinned</span>' : ''}${fresh ? ' <span class="newtag">Just updated</span>' : ''}</h3><div class="meta">${esc(r.region)} · ${meta}</div></div>
     <span class="badge b-${r.status}">${STATUS[r.status].label}</span></div>
-    ${r.unopposed ? '' : `<div class="repwrap">${repPill(r.pr, r.tp, r.total > 0)}</div>`}
+    ${r.unopposed ? '' : `<div class="repwrap">${repPill(r.pr, r.tp, r.total > 0, r.pp)}${vtLine(r.vt)}</div>`}
     <div class="row">${line(r.dem, 'dem')}${line(r.opp, 'rep')}${bar}</div>
     <div class="facts">      <span>Margin <b>${r.total ? pts(r.margin) : '–'}</b></span><span>Baseline <b>${pts(r.base)}</b></span>
       <span>Early-vote lean <b>${pct(r.ev, 0)} D</b></span><span>Votes counted <b>${fmt(r.total)}</b></span></div>
@@ -945,7 +975,7 @@ function tableHTML() {
       <td class="num" style="color:var(--dem)">${dp}</td>
       <td class="num"><b>${r.total && !r.unopposed ? pts(r.margin) : '–'}</b></td>
       <td class="num" style="color:${sw === null ? 'inherit' : sw >= 0 ? 'var(--dem)' : 'var(--rep)'}">${sw === null ? '–' : (sw >= 0 ? '+' : '−') + Math.abs(sw * 100).toFixed(1)}</td>
-      <td>${r.unopposed ? '<span class="meta">no race</span>' : `<span class="pbar${r.allIn ? ' full' : ''}"><span style="width:${repPct(r.pr, r.tp)}%"></span></span><b>${repPct(r.pr, r.tp)}%</b>${r.total && !r.pr ? '<span class="meta" title="Votes in, but no precinct fully reported yet: early/absentee votes">*</span>' : ''}`}</td>
+      <td>${r.unopposed ? '<span class="meta">no race</span>' : `<span class="pbar${r.allIn ? ' full' : ''}" title="${r.pr} of ${r.tp} precincts complete, ${r.pp} partly counted"><span style="width:${repPct(r.pr, r.tp)}%"></span><span class="pp" style="width:${r.tp ? Math.min(100 - repPct(r.pr, r.tp), r.pp / r.tp * 100) : 0}%"></span></span><b>${repPct(r.pr, r.tp)}%</b>`}</td>
       <td><span class="badge b-${r.status}">${STATUS[r.status].label}</span></td>
       <td>${r.incParty === 'D' ? '<b style="color:var(--dem)">D</b>' : '<b style="color:var(--rep)">R</b>'}</td></tr>`;
   }).join('');
@@ -957,7 +987,7 @@ function tableHTML() {
       <select id="treg" aria-label="Region"><option value="all">All regions</option>${REGIONS.map(x => `<option${tableRegion === x ? ' selected' : ''}>${x}</option>`).join('')}</select>
       <select id="theld" aria-label="Held by"><option value="all">Held by either party</option><option value="R"${tableHeld === 'R' ? ' selected' : ''}>Rep-held seats</option><option value="D"${tableHeld === 'D' ? ' selected' : ''}>Dem-held seats</option></select>
       <input id="tq" type="search" placeholder="Search district, county or candidate" value="${esc(tableQuery)}" style="flex:1;min-width:180px;font:inherit;padding:5px 10px;border:1px solid var(--line);border-radius:8px">
-      <span class="meta">${list.length} of 124 · click any column to sort · * = early/absentee votes only</span>
+      <span class="meta">${list.length} of 124 · click any column to sort · Reporting = % of precincts complete; light bar = partly counted</span>
     </div>
     <div class="tablewrap"><table class="house"><thead><tr>${th('hd', 'HD')}${th('area', 'Counties')}${th('dem', 'Democrat')}${th('opp', 'Opponent')}${th('dpct', 'D %', 'num')}${th('margin', 'Margin', 'num')}${th('swing', 'vs base', 'num', 'Dem margin now minus the district 2020-24 baseline: + means Democrats are running ahead of it')}${th('counted', 'Reporting', '', 'Share of precincts fully reported')}${th('status', 'Status')}${th('held', 'Held', '', 'Party holding the seat today')}</tr></thead>
     <tbody>${rows || '<tr><td colspan="10" class="meta">No races match these choices.</td></tr>'}</tbody></table></div>`;
@@ -1101,11 +1131,22 @@ function runSelfTest() {
     const C = {Aa: {byK: {'01': {CH:['DEM B Jones', 'REP A Smith', 'Write-In'], V:[70, 30, 1], PR:2, TP:8}}}};
     const m = mergeCounty(sm, dt, C);
     ok('H county merge: votes summed by candidate name (R 35, D 75, write-in 1)', JSON.stringify(m.summary[0].V) === '[35,75,1]', m.summary[0].V);
-    ok('H county merge: precincts from county page, missing county from rollup', JSON.stringify(m.details[0].PX) === '[2,1]' && JSON.stringify(m.details[0].PY) === '[8,5]', [m.details[0].PX, m.details[0].PY]);
+    ok('H county merge: with no precinct list, precincts stay from the rollup (county totals include failsafe/provisional)', JSON.stringify(m.details[0].PX) === '[0,1]' && JSON.stringify(m.details[0].PY) === '[5,5]', [m.details[0].PX, m.details[0].PY]);
     const C2 = {Aa: {byK: {'01': {CH:['DEM B Jones', 'REP A Smith', 'Write-In'], V:[0, 0, 0], PR:0, TP:8}}}};
     const dt2 = [{...dt[0], V:[[10, 20, 0], [5, 5, 0]], PX:[1, 1]}];
     const m2 = mergeCounty(sm, dt2, C2);
     ok('H county merge: a county page behind the rollup is ignored', JSON.stringify(m2.summary[0].V) === '[15,25,0]', m2.summary[0].V); }
+  // I: precinct status codes and vote types
+  { const sm = [{K:'X1', C:'x', CH:['REP A', 'DEM B', 'Write-In'], P:['REP', 'DEM', 'NON'], V:[0, 0, 0], W:[0, 0, 0]}];
+    const dt = [{K:'X1', P:['Aa'], Eid:['1'], Cid:['01'], PX:[0], PY:[3], V:[[0, 0, 0]]}];
+    const prec = {Aa: {'01': ['p1', 'p2', 'p3']}};
+    const co = st => ({byK: {'01': {CH:['REP A', 'DEM B', 'Write-In'], V:[40, 60, 1], PR:0, TP:6}}, status: {...st, failsafe: 32, provisional: 32}, types:['Election Day', 'Early Voting', 'Absentee By Mail', 'Failsafe'], vtK: {'01': [10, 80, 10, 1]}});
+    let m = mergeCounty(sm, dt, {Aa: co({p1: 4, p2: 2, p3: 1})}, prec);
+    ok('I precincts: 1 complete + 1 partly counted of 3 (failsafe/provisional not counted as precincts)', m.details[0].PX[0] === 1 && m.details[0].PP[0] === 1 && m.details[0].PY[0] === 3, [m.details[0].PX, m.details[0].PP, m.details[0].PY]);
+    ok('I vote types: Election Day 10, Early 80, Mail 10, Other 1', JSON.stringify(m.details[0].VT) === '[10,80,10,1]', m.details[0].VT);
+    m = mergeCounty(sm, dt, {Aa: co({p1: 4, p2: 4, p3: 4})}, prec);
+    const h = HOUSE[0], rr = evalRace(h, m.summary[0], m.details[0]);
+    ok('I all real precincts complete -> race counted as won, even though the county total includes failsafe/provisional', rr.final && rr.pr === 3 && rr.tp === 3, [rr.final, rr.pr, rr.tp]); }
   const fails = out.filter(l => l.startsWith('FAIL')).length;
   const pre = document.createElement('pre'); pre.id = 'selftest'; pre.textContent = `SELF-TEST ${fails ? 'FAILED' : 'PASSED'}: ${out.length - fails} of ${out.length}\n` + out.join('\n');
   pre.style.cssText = 'background:#fff;border:2px solid ' + (fails ? '#DC2626' : '#059669') + ';padding:12px;border-radius:8px;white-space:pre-wrap';
