@@ -241,7 +241,7 @@ footer a{color:var(--brand)}
 </div>
 
 <footer>
-  Source: South Carolina Election Commission official results. Vote counts are read from all 46 county results pages, which post before the statewide rollup; any county page that fails to load or is behind falls back to the statewide numbers. Feeds: statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 5 minutes until 8:33 PM ET, then every 10 minutes. All results are unofficial until certified.<br>
+  Source: South Carolina Election Commission official results. Vote counts are read from all 46 county results pages, which post before the statewide rollup; any county page that fails to load or is behind falls back to the statewide numbers. Feeds: statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 2 minutes. All results are unofficial until certified.<br>
   <b>Seat math:</b> 124 seats; a majority is 63; a two-thirds supermajority is 83, so Democrats break it at 42 seats. "Held today" is each seat's current party from the "Challenge every seat 2026" sheet (89 Republican, 35 Democratic).<br>
   <b>Won</b> = every precinct counted, the state marked a winner, or the candidate has no opponent. <b>Leading</b> includes races within 3 points, credited to whoever is ahead right now. <b>Projected</b> = won + leading + seats with no votes counted yet, given to the party that holds them today.<br>
   "Reporting" = share of precincts fully counted; for a district it adds up each county's precincts for the district; SC reports absentee and early votes as their own precincts, so a district can jump in one batch. "Dem needs" assumes the remaining precincts are the same size as those counted, so treat it as rough. Baseline = average top-of-ticket Dem margin 2020–24 in the district.
@@ -252,8 +252,7 @@ footer a{color:var(--brand)}
 const ELECTION = 'https://www.enr-scvotes.org/SC/127300';
 const CHS = 'https://www.enr-scvotes.org/SC/Charleston/127310';
 // Every 5 minutes until 8:33 PM ET (01:33 UTC), then every 10. Fixed clock time, so a reload doesn't extend it.
-const FAST_UNTIL = Date.parse('2026-11-04T01:33:00Z');
-const refreshMs = () => (Date.now() < FAST_UNTIL ? 5 : 10) * 60 * 1000;
+const refreshMs = () => 2 * 60 * 1000; // every 2 minutes for election night
 const HOUSE = /*HOUSE*/[];
 // For each county and county contest id: the precincts in that race (fetched from the county pages at build time; failsafe/provisional excluded)
 const PREC = /*PRECINCTS*/{};
