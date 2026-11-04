@@ -50,7 +50,15 @@ button:hover{border-color:var(--brand);color:var(--brand)}
 .card.s-dlead{border-left-color:var(--dem-lean)}
 .card.s-rlead{border-left-color:var(--rep-lean)}
 .card.s-toss{border-left-color:var(--toss)}
-.card.s-hold{border-left-color:var(--rep)}
+.card.s-hold,.card.s-rflip{border-left-color:var(--rep)}
+.card.s-dhold{border-left-color:var(--dem)}
+.b-dhold{background:var(--dem);color:#fff}.b-rflip{background:#7F1D1D;color:#fff}
+.xsec{margin-bottom:16px}
+.xsec h2{font-size:16px;margin-bottom:8px}
+.xgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+.xcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.xcard h3{font-size:15px}
+.xcard .meta{color:var(--muted);font-size:12px}
 .ch{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
 .ch h3{font-size:18px}
 .ch .meta{color:var(--muted);font-size:12px}
@@ -83,7 +91,7 @@ footer a{color:var(--brand)}
 <header>
   <div>
     <h1>SC House Flip Watch</h1>
-    <p>14 Republican-held State House seats we are trying to flip · General election, 3 Nov 2026 · Unofficial results</p>
+    <p>14 Republican-held State House seats we are trying to flip, plus HD 115 to defend and your other starred races · General election, 3 Nov 2026 · Unofficial results</p>
   </div>
   <div class="status">
     <span class="dot" id="dot"></span><span id="stat">Loading…</span>
@@ -94,15 +102,21 @@ footer a{color:var(--brand)}
 
 <div class="tally" id="tally"></div>
 
+<section class="xsec">
+  <h2>Other starred races</h2>
+  <div class="xgrid" id="extras"></div>
+</section>
+
 <div class="grid">
   <div class="mapcard">
     <!--SVG-->
     <div class="legend">
       <span><i style="background:var(--flip)"></i>Dem won (flip)</span>
+      <span><i style="background:var(--dem)"></i>Dem held</span>
       <span><i style="background:var(--dem-lean)"></i>Dem leading</span>
       <span><i style="background:#FBBF24"></i>Within 3 pts</span>
       <span><i style="background:var(--rep-lean)"></i>Rep leading</span>
-      <span><i style="background:var(--rep)"></i>Rep held</span>
+      <span><i style="background:var(--rep)"></i>Rep won</span>
       <span><i style="background:#CBD5E1"></i>No votes yet</span>
     </div>
   </div>
@@ -118,7 +132,7 @@ footer a{color:var(--brand)}
 </div>
 
 <footer>
-  Source: South Carolina Election Commission official results feed (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>), read directly by this page every 10 minutes. All results are unofficial until certified.
+  Source: South Carolina Election Commission official results feeds, statewide (<a href="https://www.enr-scvotes.org/SC/127300/" target="_blank" rel="noopener">enr-scvotes.org</a>) and Charleston County (<a href="https://www.enr-scvotes.org/SC/Charleston/127310/" target="_blank" rel="noopener">county page</a>), read directly by this page every 10 minutes. Governor and U.S. House 1 show whole-race totals, with Charleston County's share underneath. All results are unofficial until certified.
   "Precincts counted" adds up each county's precincts for the district; SC also reports absentee and early votes as their own precincts, so early votes can arrive in a lump.
   "Dem needs" assumes the remaining precincts are the same size as those already counted, so treat it as a rough guide.
   Baseline = average top-of-ticket Dem margin 2020–24 in the district; early-vote lean = modeled party share of early voters through 2 Nov (both from the "Challenge every seat 2026" sheet).
@@ -144,17 +158,30 @@ const TARGETS = [
   {hd:112, key:'28224', region:'Lowcountry / Charleston', inc:'Joe Bustos', base:-0.0848, ev:0.4584},
   {hd:116, key:'28232', region:'Lowcountry / Charleston', inc:'James Teeple', base:0.0364, ev:0.5490},
   {hd:122, key:'28244', region:'Lowcountry / Hampton', inc:'Bill Hager', base:-0.0090, ev:0.7229},
+  // Starred in the Charleston County results page: Dem-held open seat to defend
+  {hd:115, key:'28230', region:'Lowcountry / Charleston', inc:'Spencer Wetmore', incParty:'D', open:true, base:0.0723, ev:0.5156},
+].map(t => ({incParty:'R', ...t}));
+// Other races starred in the browser (state favorites + Charleston County favorites).
+// state = contest id in the statewide feed (whole-race totals); chs = contest id in the Charleston County feed.
+const CHS = 'https://www.enr-scvotes.org/SC/Charleston/127310';
+const EXTRA = [
+  {id:'gov', title:'Governor and Lieutenant Governor', scope:'Statewide', state:'21500', chs:'0005'},
+  {id:'us1', title:'U.S. House, District 1', scope:'Whole district', state:'27002', chs:'0013'},
+  {id:'probate', title:'Probate Judge', scope:'Charleston County', chs:'0028'},
+  {id:'sb3', title:'School Board of Trustees, District 3', scope:'Charleston County · nonpartisan', chs:'0037'},
 ];
 const STATUS = {
   flip:{label:'FLIPPED: Dem wins', color:'#059669'},
+  dhold:{label:'Dem holds', color:'#1E40AF'},
   dlead:{label:'Dem leading', color:'#3B82F6'},
   toss:{label:'Too close to call', color:'#FBBF24'},
   rlead:{label:'Rep leading', color:'#DC2626'},
   hold:{label:'Rep holds', color:'#991B1B'},
+  rflip:{label:'LOST: Rep flips seat', color:'#7F1D1D'},
   wait:{label:'No votes yet', color:'#CBD5E1'},
 };
 const DEMO = new URLSearchParams(location.search).has('demo');
-let sortBy = 'hd', selected = null, lastRaces = null, nextAt = 0, version = null;
+let sortBy = 'hd', selected = null, lastRaces = null, lastExtras = null, extraErr = null, nextAt = 0, version = null;
 
 const fmt = n => n.toLocaleString('en-US');
 const pct = (x, d=1) => (x*100).toFixed(d) + '%';
@@ -171,18 +198,17 @@ async function getJSON(url) {
 async function load() {
   setStat('Checking for new results…', '');
   try {
-    let summary, details;
-    if (DEMO) { ({summary, details} = demoData()); version = 'demo'; }
+    let summary, details, chsSum = null;
+    if (DEMO) { ({summary, details, chsSum} = demoData()); version = 'demo'; }
     else {
-      const vr = await fetch(ELECTION + '/current_ver.txt?_=' + Date.now(), {cache:'no-store'});
-      if (!vr.ok) throw new Error(vr.status + ' on current_ver.txt');
-      version = (await vr.text()).trim();
-      [summary, details] = await Promise.all([
-        getJSON(`${ELECTION}/${version}/json/en/summary.json`),
-        getJSON(`${ELECTION}/${version}/json/details.json`),
-      ]);
+      const chsP = loadFeed(CHS, ['json/en/summary.json']).then(([s]) => s).catch(e => { extraErr = e.message; return null; });
+      [summary, details] = await loadFeed(ELECTION, ['json/en/summary.json', 'json/details.json']);
+      chsSum = await chsP;
+      if (chsSum) extraErr = null;
     }
-    lastRaces = build(summary, details.Contests || details);
+    details = details.Contests || details;
+    lastRaces = build(summary, details);
+    lastExtras = buildExtras(summary, details, chsSum);
     render();
     setStat(`Updated ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · feed version ${version}`, 'live');
   } catch (e) {
@@ -190,6 +216,74 @@ async function load() {
     setStat('Could not reach the results feed (' + e.message + '). Will retry.', 'err');
   }
   nextAt = Date.now() + REFRESH_MS;
+}
+
+async function loadFeed(base, files) {
+  const vr = await fetch(base + '/current_ver.txt?_=' + Date.now(), {cache:'no-store'});
+  if (!vr.ok) throw new Error(vr.status + ' on ' + base.split('/SC/')[1] + ' current_ver.txt');
+  const v = (await vr.text()).trim();
+  if (base === ELECTION) version = v;
+  return Promise.all(files.map(f => getJSON(`${base}/${v}/${f}`)));
+}
+
+function partyColor(p) { return p === 'DEM' ? 'var(--dem-lean)' : p === 'REP' ? 'var(--rep-lean)' : 'var(--brand)'; }
+
+function summarizeContest(c, pr, tp) {
+  const cands = c.CH.map((n, i) => ({name: cleanName(n), party: c.P[i], votes: c.V[i] || 0, won: c.W && c.W[i] === 1}));
+  const total = cands.reduce((s, x) => s + x.votes, 0);
+  const ranked = [...cands].sort((a, b) => b.votes - a.votes);
+  const [a, b] = ranked;
+  const margin = total && b ? (a.votes - b.votes) / total : 0;
+  const called = cands.some(x => x.won), allIn = tp > 0 && pr >= tp;
+  let status = !total ? 'wait' : called ? 'called' : allIn ? 'final' : margin < 0.03 ? 'toss' : 'lead';
+  return {cands, total, ranked, leader: a, second: b, margin, pr, tp, called, allIn, status};
+}
+
+function buildExtras(summary, details, chsSum) {
+  const sK = Object.fromEntries(summary.map(c => [c.K, c]));
+  const dK = Object.fromEntries(details.map(c => [c.K, c]));
+  const cK = chsSum ? Object.fromEntries(chsSum.map(c => [c.K, c])) : {};
+  return EXTRA.map(e => {
+    let main = null, chs = null;
+    if (e.state && sK[e.state]) {
+      const d = dK[e.state];
+      main = summarizeContest(sK[e.state], d ? d.PX.reduce((x, y) => x + y, 0) : sK[e.state].PR, d ? d.PY.reduce((x, y) => x + y, 0) : sK[e.state].TP);
+    }
+    if (cK[e.chs]) {
+      const c = cK[e.chs];
+      chs = summarizeContest(c, c.PR, c.TP);
+      if (!main) main = chs, chs = null;
+    }
+    return {...e, main, county: chs, wantCounty: !!(e.state && e.chs)};
+  });
+}
+
+function renderExtras() {
+  const el = document.getElementById('extras');
+  if (!lastExtras) { el.innerHTML = ''; return; }
+  const label = {wait:'No votes yet', called:'Called', final:'All precincts in', toss:'Too close to call', lead:'Leading'};
+  el.innerHTML = lastExtras.map(e => {
+    const m = e.main;
+    if (!m) return `<div class="xcard"><h3>${esc(e.title)}</h3><div class="meta">${esc(e.scope)}</div><div class="note">Not available from the feed right now${extraErr ? ' (' + esc(extraErr) + ')' : ''}.</div></div>`;
+    const shown = m.ranked.filter(x => !/^write-in$/i.test(x.name) || x.votes > 0);
+    const rows = shown.map(x => `<div class="nm">${x.party !== 'NON' ? `<b style="color:${partyColor(x.party)}">${x.party[0]}</b> ` : ''}${esc(x.name)}${x.won ? ' ✓' : ''}</div><div class="pc" style="color:${partyColor(x.party)}">${m.total ? pct(x.votes / m.total) : '–'}</div><div class="vt">${fmt(x.votes)}</div>`).join('');
+    const lp = m.leader && m.leader.party;
+    const bcls = m.status === 'wait' ? 'b-wait' : m.status === 'toss' ? 'b-toss' : lp === 'DEM' ? 'b-dlead' : lp === 'REP' ? 'b-rlead' : 'b-wait';
+    const badge = m.status === 'wait' || m.status === 'toss' ? label[m.status] : `${label[m.status]}: ${lp === 'DEM' ? 'Dem' : lp === 'REP' ? 'Rep' : esc(m.leader.name.split(' ').slice(-1)[0])}`;
+    const note = !m.total ? 'Waiting for the first votes.'
+      : `${esc(m.leader.name)} ${m.allIn || m.called ? 'finishes' : 'leads'} ${fmt(m.leader.votes - m.second.votes)} votes ahead (${(m.margin * 100).toFixed(1)} pts) with ${m.tp ? pct(m.pr / m.tp, 0) : '0%'} of precincts counted.`;
+    let chsLine = '';
+    if (e.wantCounty) {
+      const c = e.county;
+      chsLine = c ? `<div class="facts"><span>In Charleston County: ${c.total ? c.ranked.slice(0, 2).map(x => `<b style="color:${partyColor(x.party)}">${esc(x.name.split(' / ')[0])} ${pct(x.votes / c.total)}</b>`).join(' · ') : '<b>no votes yet</b>'} (${c.pr} of ${c.tp} precincts)</span></div>`
+                  : `<div class="facts"><span>Charleston County numbers unavailable${extraErr ? ' (' + esc(extraErr) + ')' : ''}</span></div>`;
+    }
+    return `<div class="xcard"><div class="ch"><div><h3>${esc(e.title)}</h3><div class="meta">${esc(e.scope)}</div></div><span class="badge ${bcls}">${badge}</span></div>
+      <div class="row">${rows}</div>
+      <div class="prog" title="Precincts counted"><span style="width:${m.tp ? m.pr / m.tp * 100 : 0}%"></span></div>
+      <div class="facts"><span>Precincts counted <b>${fmt(m.pr)} of ${fmt(m.tp)}</b> (${m.tp ? pct(m.pr / m.tp, 0) : '0%'})</span><span>Votes counted <b>${fmt(m.total)}</b></span></div>
+      <div class="note">${note}</div>${chsLine}</div>`;
+  }).join('');
 }
 
 function setStat(t, cls) {
@@ -214,11 +308,11 @@ function build(summary, details) {
     const share = total ? pr / Math.max(tp, 1) : 0;
     const margin = total ? (dem.votes - rep.votes) / total : 0;
     const allIn = tp > 0 && pr >= tp;
+    const final = dem.won ? 'D' : rep.won ? 'R' : (total && allIn) ? (margin > 0 ? 'D' : 'R') : null;
     let status;
-    if (dem.won) status = 'flip';
-    else if (rep.won) status = 'hold';
+    if (final === 'D') status = t.incParty === 'D' ? 'dhold' : 'flip';
+    else if (final === 'R') status = t.incParty === 'D' ? 'rflip' : 'hold';
     else if (!total) status = 'wait';
-    else if (allIn) status = margin > 0 ? 'flip' : 'hold';
     else if (Math.abs(margin) < 0.03) status = 'toss';
     else status = margin > 0 ? 'dlead' : 'rlead';
     // rough projection of remaining votes from precincts counted
@@ -267,14 +361,17 @@ function render() {
   const races = lastRaces; if (!races) return;
   const cnt = k => races.filter(r => r.status === k).length;
   const totPr = races.reduce((s, r) => s + r.pr, 0), totTp = races.reduce((s, r) => s + r.tp, 0);
+  const N = races.length;
   document.getElementById('tally').innerHTML = [
     ['flip', cnt('flip'), 'Flipped to Dem (all in or called)'],
+    ['dlead', cnt('dhold'), 'Dem held (HD 115)'],
     ['dlead', cnt('dlead'), 'Dem leading'],
     ['toss', cnt('toss'), 'Within 3 pts'],
     ['rlead', cnt('rlead'), 'Rep leading'],
-    ['', cnt('hold'), 'Rep held'],
-    ['', `${totTp ? Math.round(totPr / totTp * 100) : 0}%`, `Precincts counted across all 14 (${fmt(totPr)} of ${fmt(totTp)})`],
-  ].map(([c, n, l]) => `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l} ${typeof n === 'number' ? 'of 14' : ''}</div></div>`).join('');
+    ['', cnt('hold') + cnt('rflip'), 'Rep won'],
+    ['', `${totTp ? Math.round(totPr / totTp * 100) : 0}%`, `Precincts counted across all ${N} districts (${fmt(totPr)} of ${fmt(totTp)})`],
+  ].map(([c, n, l]) => `<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l}${typeof n === 'number' && !/HD 115/.test(l) ? ' · of ' + N : ''}</div></div>`).join('');
+  renderExtras();
 
   for (const r of races) {
     const p = document.getElementById('house-' + r.hd);
@@ -285,13 +382,13 @@ function render() {
     if (r.missing) return `<div class="card" id="card-${r.hd}"><h3>HD ${r.hd}</h3><div class="note">${characterize(r)}</div></div>`;
     const tw = r.total || 1;
     const bar = r.total ? `<div class="bar"><span style="width:${r.dem.votes/tw*100}%;background:var(--dem-lean)"></span><span style="width:${r.other/tw*100}%;background:#CBD5E1"></span><span style="width:${r.rep.votes/tw*100}%;background:var(--rep-lean)"></span></div>` : '';
-    const cand = (x, cls) => `<div class="nm"><b style="color:var(--${cls})">${x.party === 'DEM' ? 'D' : 'R'}</b> ${esc(x.name)}${x.won ? ' ✓' : ''}${x.party === 'REP' ? ' <span style="color:var(--muted)">(incumbent)</span>' : ''}</div><div class="pc" style="color:var(--${cls})">${r.total ? pct(x.votes / tw) : '–'}</div><div class="vt">${fmt(x.votes)}</div>`;
+    const cand = (x, cls) => `<div class="nm"><b style="color:var(--${cls})">${x.party === 'DEM' ? 'D' : 'R'}</b> ${esc(x.name)}${x.won ? ' ✓' : ''}${!r.open && x.party === (r.incParty === 'D' ? 'DEM' : 'REP') ? ' <span style="color:var(--muted)">(incumbent)</span>' : ''}</div><div class="pc" style="color:var(--${cls})">${r.total ? pct(x.votes / tw) : '–'}</div><div class="vt">${fmt(x.votes)}</div>`;
     const ctable = r.counties.length ? `<details><summary>By county (${r.counties.length})</summary><table><tr><th>County</th><th>Precincts</th><th>Dem</th><th>Rep</th></tr>${r.counties.map(c => {
       const di = r.cands.indexOf(r.dem), ri = r.cands.indexOf(r.rep);
       return `<tr><td>${esc(c.name)}</td><td>${c.px} / ${c.py}</td><td>${fmt(c.v[di] || 0)}</td><td>${fmt(c.v[ri] || 0)}</td></tr>`;
     }).join('')}</table></details>` : '';
     return `<div class="card s-${r.status}${selected === r.hd ? ' sel' : ''}" id="card-${r.hd}">
-      <div class="ch"><div><h3>HD ${r.hd}</h3><div class="meta">${esc(r.region)} · Incumbent ${esc(r.inc)} (R)</div></div>
+      <div class="ch"><div><h3>HD ${r.hd}</h3><div class="meta">${esc(r.region)} · ${r.open ? `Open seat, Dem-held (was ${esc(r.inc)}) · defend` : `Incumbent ${esc(r.inc)} (${r.incParty})`}</div></div>
       <span class="badge b-${r.status}">${STATUS[r.status].label}</span></div>
       <div class="row">${cand(r.dem, 'dem')}${cand(r.rep, 'rep')}${bar}</div>
       <div class="prog" title="Precincts counted"><span style="width:${r.tp ? r.pr / r.tp * 100 : 0}%"></span></div>
@@ -333,13 +430,24 @@ function setupMap() {
 function demoData() {
   const summary = [], details = [];
   TARGETS.forEach((t, i) => {
-    const tp = 10 + i, pr = Math.floor(tp * [0, .3, .6, 1, .8, .2, 1, .5, .9, .4, .7, 0, 1, .55][i]);
+    const tp = 10 + i, pr = Math.floor(tp * ([0, .3, .6, 1, .8, .2, 1, .5, .9, .4, .7, 0, 1, .55][i] ?? .65));
     const tot = pr * 400, ds = 0.5 + t.base + ((i * 37) % 9 - 4) / 100;
     const dv = Math.round(tot * ds), rv = tot - dv - 12;
     summary.push({K:t.key, C:'State House of Representatives, District ' + t.hd, CH:['REP ' + t.inc, 'DEM Demo Challenger ' + t.hd, 'Write-In'], P:['REP','DEM','NON'], V:pr ? [rv, dv, 12] : [0,0,0], W:[0,0,0]});
     details.push({K:t.key, P:['Demo County'], PX:[pr], PY:[tp], V:[pr ? [rv, dv, 12] : [0,0,0]]});
   });
-  return {summary, details};
+  const mk = (K, CH, P, V, PR, TP) => ({K, C:'demo', CH, P, V, W:V.map(() => 0), PR, TP});
+  summary.push(mk('21500', ['UNC A / B', 'GRN C / D', 'REP Demo Rep / Running Mate', 'DEM Demo Dem / Running Mate', 'Write-In'], ['UNC','GRN','REP','DEM','NON'], [900, 600, 410000, 352000, 300], 20, 46));
+  details.push({K:'21500', P:['All'], PX:[1100], PY:[2260], V:[[]]});
+  summary.push(mk('27002', ['REP Demo Rep', 'LIB Demo Lib', 'DEM Demo Dem', 'Write-In'], ['REP','LIB','DEM','NON'], [61000, 2100, 58800, 40], 3, 6));
+  details.push({K:'27002', P:['All'], PX:[190], PY:[310], V:[[]]});
+  const chsSum = [
+    mk('0005', ['UNC A / B', 'GRN C / D', 'REP Demo Rep / Running Mate', 'DEM Demo Dem / Running Mate', 'Write-In'], ['UNC','GRN','REP','DEM','NON'], [80, 60, 30100, 33900, 20], 120, 185),
+    mk('0013', ['REP Demo Rep', 'LIB Demo Lib', 'DEM Demo Dem', 'Write-In'], ['REP','LIB','DEM','NON'], [25000, 900, 26100, 10], 55, 82),
+    mk('0028', ['REP Demo Rep', 'DEM Demo Dem', 'Write-In'], ['REP','DEM','NON'], [52000, 51000, 30], 185, 185),
+    mk('0037', ['Cand A', 'Cand B', 'Cand C', 'Cand D', 'Write-In'], ['NON','NON','NON','NON','NON'], [3100, 2900, 1500, 800, 0], 20, 34),
+  ];
+  return {summary, details, chsSum};
 }
 
 document.getElementById('refresh').onclick = load;
