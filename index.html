@@ -194,7 +194,14 @@ details td:first-child,details th:first-child{text-align:left}
 .mlegend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .mlegend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 
-.hemi{margin:4px 0 10px}.hemi svg{width:100%;max-width:640px;height:auto;display:block;margin:0 auto}
+.hemirow{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:6px 0 2px}
+.hemi{position:relative;flex:0 0 auto;width:250px;transition:width .25s cubic-bezier(.16,1,.3,1)}
+.hemi svg{width:100%;height:auto;display:block}
+.hemi .hsub,.hemi .hcap{display:none}
+.hemi.open{width:100%;margin:6px 0 10px}.hemi.open svg{max-width:640px;margin:0 auto}.hemi.open .hsub,.hemi.open .hcap{display:block}
+.htog{display:block;margin:2px auto 0;font:500 11.5px 'Space Grotesk',sans-serif;color:var(--brand);background:none;border:0;padding:2px 4px;cursor:pointer}
+.htog:hover{text-decoration:underline}.hemi.open .htog{position:absolute;right:4px;top:-2px;margin:0}
+@media (max-width:640px){.hemi{width:100%}}
 .hemi .seat{cursor:pointer;stroke:#fff;stroke-width:1}.hemi .seat:hover,.hemi .seat.sel{stroke:#0F172A;stroke-width:2}
 .hnum{font:800 56px 'DM Sans',sans-serif;text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:6px}.hnum.d{fill:var(--dem)}.hnum.r{fill:var(--rep)}
 .hmid{font:800 26px 'DM Sans',sans-serif;text-anchor:middle;fill:#475569;paint-order:stroke;stroke:#fff;stroke-width:5px}
@@ -889,8 +896,7 @@ function renderScore(T) {
     <div class="headline ${cls}">${head}</div>
     <div class="repline">${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main && sen.main.ballots ? expPill(sen.main.ballots) : ''; })()}${repPill(T.pr, T.tp, T.anyVotes, T.pp)}<span>across the ${T.contested} contested House races · <b>${T.withVotes}</b> of ${T.contested} races have votes · <b>${T.fullIn}</b> fully counted</span></div>
     ${(() => { const sen = extras && extras.find(e => e.id === 'ussen'); return sen && sen.main ? vtLine(sen.main.vt, 'Votes counted statewide so far (U.S. Senate race)') : ''; })()}
-    <div class="subline">${sub}</div>
-    ${seatChart(T)}
+    <div class="hemirow">${seatChart(T)}<div class="subline">${sub}</div></div>
     <div class="seatwrap">
       <div class="seatbar">${bar}</div>
       <div class="mark t" style="left:${(D_BREAK - 0.5) / SEATS * 100}%"><b>Supermajority line: Dems need ${D_BREAK} · Reps need ${SUPER}</b></div>
@@ -942,7 +948,8 @@ function renderEvents() {
     : '<li class="empty">No changes yet. Each time the state posts new numbers, what moved appears here, newest first.</li>';
 }
 
-let mapReady = false, zoomKey = null;
+let mapReady = false, zoomKey = null, hemiOpen = false;
+try { hemiOpen = localStorage.getItem('scwatch-hemi') === '1'; } catch (e) {}
 function renderMap() {
   const focus = view === 'targets' ? TARGET_HDS : view === 'local' ? LOCAL_HDS : null;
   const mi = document.getElementById('mapinfo'), sr = expanded && selected ? races.find(x => x.hd === selected) : null;
@@ -1339,10 +1346,11 @@ function seatChart(T) {
   ];
   const dots = order.map(([r, col], i) => { const p = SEAT_XY[i]; return `<circle cx="${(p.x * 100).toFixed(1)}" cy="${(p.y * 100).toFixed(1)}" r="7.2" fill="${col}" data-hd="${r.hd}" class="seat${selected === r.hd ? ' sel' : ''}"><title>HD ${r.hd} · ${esc(r.region)}\n${STATUS[r.status].label}${r.total && !r.unopposed ? ` · ${pts(r.margin)} · ${repPct(r.pr, r.tp)}% complete` : ''}</title></circle>`; }).join('');
   const und = T.wait + T.toss;
-  return `<div class="hemi"><svg viewBox="-215 -215 430 232" role="img" aria-label="Seating chart of the 124 House seats">${dots}
+  return `<div class="hemi${hemiOpen ? ' open' : ''}"><svg viewBox="-215 -215 430 232" role="img" aria-label="Seating chart of the 124 House seats">${dots}
     <text x="-150" y="-6" class="hnum d">${T.Dproj}</text><text x="150" y="-6" class="hnum r">${T.Rproj}</text>
     <text x="0" y="-26" class="hmid">${und}</text><text x="0" y="-10" class="hsub">not yet decided</text>
     <text x="-150" y="12" class="hsub">Democrats</text><text x="150" y="12" class="hsub">Republicans</text></svg>
+    <button class="htog" data-hemi="1" aria-expanded="${hemiOpen}">${hemiOpen ? 'Collapse' : 'Expand'} seating chart</button>
     <div class="hcap">Each dot is one seat, Democrats filling from the left and Republicans from the right. Dark = won · medium = leading · pale = leading by under 3 points · faint = no votes yet (shown with the party that holds it today). Hover a dot for the district; click to jump to it. Supermajority line: 83 seats; Democrats break it at 42.</div></div>`;
 }
 
@@ -1367,6 +1375,7 @@ document.addEventListener('click', ev => {
   const t = ev.target;
   const tab = t.closest('#tabs button'); if (tab) return setView(tab.dataset.view);
   const z = t.closest('#zoom button'); if (z) return zoomTo(z.dataset.zoom);
+  const hb = t.closest('[data-hemi]'); if (hb) { hemiOpen = !hemiOpen; try { localStorage.setItem('scwatch-hemi', hemiOpen ? '1' : '0'); } catch (e) {} return render(); }
   const mz = t.closest('[data-mz]'); if (mz) { const a = mz.dataset.mz; return a === 'in' ? zoomBy(1.6) : a === 'out' ? zoomBy(1 / 1.6) : a === 'reset' ? zoomTo('state') : setExpanded(!expanded); }
   const ts = t.closest('[data-tsort]'); if (ts) { targetSort = ts.dataset.tsort; savePrefs(); return render(); }
   const f = t.closest('[data-filter]'); if (f) { tableFilter = f.dataset.filter; savePrefs(); return render(); }
