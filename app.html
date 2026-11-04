@@ -240,6 +240,7 @@ const ZOOMS = {
   upstate: ['Greenville', 'Spartanburg', 'Pickens', 'Anderson'], horry: ['Horry', 'Georgetown'],
 };
 const EXTRA = [
+  {id:'ussen', title:'U.S. Senate', scope:'Statewide', state:'26000', chs:'0012'},
   {id:'gov', title:'Governor and Lieutenant Governor', scope:'Statewide', state:'21500', chs:'0005'},
   {id:'us1', title:'U.S. House, District 1', scope:'Whole district', state:'27002', chs:'0013'},
   {id:'probate', title:'Probate Judge', scope:'Charleston County', chs:'0028'},
@@ -742,7 +743,7 @@ function renderPanel() {
   el.innerHTML = `<h2 class="panelhead">${view === 'targets' ? 'Key Flip Targets' : 'Charleston starred races'}</h2>${mini}
     <div class="toolbar">Sort: ${['hd', 'margin', 'close', 'swing', 'counted', 'updated', 'base'].map(k => `<button data-tsort="${k}" class="${targetSort === k ? 'on' : ''}">${SORTS[k].label}</button>`).join('')}${targetSort === 'hd' ? '<span class="meta">HD 110 pinned first</span>' : ''}</div>
     <div class="cards">${list.map(card).join('')}</div>
-    ${view === 'local' ? `<h2 class="panelhead" style="margin-top:18px">Other Charleston starred races</h2><div class="xgrid">${renderExtras()}</div>` : ''}`;
+    ${view === 'local' ? `<h2 class="panelhead" style="margin-top:18px">Other starred races</h2><div class="xgrid">${renderExtras()}</div>` : ''}`;
 }
 
 // ---- sorting & filtering (every column sorts; choices are remembered in this browser) ----
